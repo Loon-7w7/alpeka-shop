@@ -1,13 +1,17 @@
 const MAX_CENTS = 999_999_999;
 
-/** Lee un precio escrito por una persona sin usar decimales flotantes. Regresa null si no es válido. */
+/**
+ * Lee un precio escrito por una persona sin usar decimales flotantes. Regresa null si no es válido.
+ * Una coma seguida de 1 o 2 dígitos al final es decimal ("28,50"); si no, separa miles ("1,250").
+ * Acepta ".50" y "5." como 0.50 y 5.00.
+ */
 export function parsePriceToCents(input: string): number | null {
   let text = input.replace(/[\s$]/g, '');
   if (text.includes(',') && !text.includes('.') && /,\d{1,2}$/.test(text)) text = text.replace(',', '.');
   text = text.replace(/,/g, '');
-  if (!/^\d+(\.\d{1,2})?$/.test(text)) return null;
-  const [whole, decimals = ''] = text.split('.');
-  const cents = Number(whole) * 100 + Number(decimals.padEnd(2, '0'));
+  if (!/^(\d+\.?\d{0,2}|\.\d{1,2})$/.test(text)) return null;
+  const [whole = '', decimals = ''] = text.split('.');
+  const cents = Number(whole || '0') * 100 + Number(decimals.padEnd(2, '0'));
   return cents > 0 && cents <= MAX_CENTS ? cents : null;
 }
 

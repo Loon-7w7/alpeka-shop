@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { useLayout } from '@/hooks/use-layout';
 import { isValidBarcode, normalizeBarcode } from '@/lib/barcode';
@@ -13,7 +13,7 @@ type Props = { visible: boolean; onClose: () => void; onSubmit: (code: string) =
 export function ManualEntry({ visible, onClose, onSubmit }: Props) {
   const [value, setValue] = useState('');
   const [error, setError] = useState<string>();
-  const { insets, gutter, contentWidth } = useLayout();
+  const { insets, gutter, contentWidth, height } = useLayout();
 
   const close = () => {
     setValue('');
@@ -36,7 +36,12 @@ export function ManualEntry({ visible, onClose, onSubmit }: Props) {
     <Modal visible={visible} transparent animationType="fade" statusBarTranslucent navigationBarTranslucent onRequestClose={close}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.backdrop}>
         <Pressable accessibilityLabel="Cerrar" style={styles.dismiss} onPress={close} />
-        <View style={[styles.sheet, { paddingBottom: insets.bottom + space.lg, paddingHorizontal: gutter }]}>
+        {/* Con teclado abierto en pantallas bajas u horizontal, la hoja se puede desplazar en vez de quedar tapada. */}
+        <ScrollView
+          style={[styles.sheet, { maxHeight: height * 0.9 }]}
+          contentContainerStyle={[styles.sheetContent, { paddingBottom: insets.bottom + space.lg, paddingHorizontal: gutter }]}
+          keyboardShouldPersistTaps="handled"
+          bounces={false}>
           <View style={[styles.inner, { width: contentWidth }]}>
             <AppText variant="heading" accessibilityRole="header">Escribir el código</AppText>
             <Field
@@ -55,7 +60,7 @@ export function ManualEntry({ visible, onClose, onSubmit }: Props) {
             <Button label="Buscar precio" onPress={submit} />
             <Button label="Cancelar" variant="ghost" onPress={close} />
           </View>
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </Modal>
   );
@@ -65,11 +70,11 @@ const styles = StyleSheet.create({
   backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(8,20,17,0.6)' },
   dismiss: { flex: 1 },
   sheet: {
+    flexGrow: 0,
     backgroundColor: colors.surface,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    paddingTop: space.xl,
-    alignItems: 'center',
   },
+  sheetContent: { paddingTop: space.xl, alignItems: 'center' },
   inner: { gap: space.md },
 });

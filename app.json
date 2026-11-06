@@ -43,6 +43,7 @@
     "plugins": [
       "expo-router",
       "expo-sqlite",
+      "expo-updates",
       [
         "expo-camera",
         {
@@ -87,6 +88,14 @@
         "projectId": "52fe7462-9174-4e59-bb19-da06be59bfd0"
       }
     },
-    "owner": "alpeka"
+    "owner": "alpeka",
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/52fe7462-9174-4e59-bb19-da06be59bfd0",
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
+    }
   }
 }

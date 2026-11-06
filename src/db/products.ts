@@ -1,3 +1,5 @@
+import { isValidBarcode } from '../lib/barcode.ts';
+import { isValidCents } from '../lib/money.ts';
 import { escapeLike, toSearchText } from '../lib/text.ts';
 import type { SqlDb } from './types.ts';
 
@@ -19,6 +21,7 @@ type Row = {
 
 const COLUMNS = 'code, name, price_cents, created_at, updated_at';
 export const SEARCH_LIMIT = 200;
+export const NAME_MAX = 120;
 
 const toProduct = (row: Row): Product => ({
   code: row.code,
@@ -29,10 +32,24 @@ const toProduct = (row: Row): Product => ({
 });
 
 export class DuplicateCodeError extends Error {}
+/** El producto que se quería cambiar ya no existe (se borró o se recuperó un respaldo). */
+export class MissingProductError extends Error {}
+export class InvalidProductError extends Error {}
+
+const isUniqueViolation = (error: unknown) => /UNIQUE constraint failed|SQLITE_CONSTRAINT/i.test(String(error));
 
 export async function getProduct(db: SqlDb, code: string): Promise<Product | null> {
   const row = await db.getFirstAsync<Row>(`SELECT ${COLUMNS} FROM products WHERE code = ?`, [code]);
   return row ? toProduct(row) : null;
+}
+
+/** Busca el primer código que exista de una lista de formas equivalentes (ver `barcodeCandidates`). */
+export async function findProduct(db: SqlDb, codes: string[]): Promise<Product | null> {
+  for (const code of codes) {
+    const product = await getProduct(db, code);
+    if (product) return product;
+  }
+  return null;
 }
 
 export async function searchProducts(db: SqlDb, query: string): Promise<Product[]> {
@@ -41,10 +58,10 @@ export async function searchProducts(db: SqlDb, query: string): Promise<Product[
     ? await db.getAllAsync<Row>(
         `SELECT ${COLUMNS} FROM products
          WHERE name_search LIKE ? ESCAPE '\\' OR code LIKE ? ESCAPE '\\'
-         ORDER BY name_search LIMIT ?`,
+         ORDER BY name_search, code LIMIT ?`,
         [`%${escapeLike(term)}%`, `%${escapeLike(query.trim().toUpperCase())}%`, SEARCH_LIMIT],
       )
-    : await db.getAllAsync<Row>(`SELECT ${COLUMNS} FROM products ORDER BY name_search LIMIT ?`, [SEARCH_LIMIT]);
+    : await db.getAllAsync<Row>(`SELECT ${COLUMNS} FROM products ORDER BY name_search, code LIMIT ?`, [SEARCH_LIMIT]);
   return rows.map(toProduct);
 }
 
@@ -58,19 +75,29 @@ export async function saveProduct(
   input: { originalCode?: string; code: string; name: string; priceCents: number },
   now = new Date().toISOString(),
 ): Promise<void> {
-  if (input.code !== input.originalCode && (await getProduct(db, input.code))) throw new DuplicateCodeError();
   const name = input.name.trim();
-  if (input.originalCode) {
-    await db.runAsync(
-      `UPDATE products SET code = ?, name = ?, name_search = ?, price_cents = ?, updated_at = ? WHERE code = ?`,
-      [input.code, name, toSearchText(name), input.priceCents, now, input.originalCode],
-    );
-    return;
+  if (!isValidBarcode(input.code) || !name || name.length > NAME_MAX || !isValidCents(input.priceCents)) {
+    throw new InvalidProductError();
   }
-  await db.runAsync(
-    `INSERT INTO products (code, name, name_search, price_cents, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
-    [input.code, name, toSearchText(name), input.priceCents, now, now],
-  );
+  if (input.code !== input.originalCode && (await getProduct(db, input.code))) throw new DuplicateCodeError();
+  try {
+    if (input.originalCode) {
+      const { changes } = await db.runAsync(
+        `UPDATE products SET code = ?, name = ?, name_search = ?, price_cents = ?, updated_at = ? WHERE code = ?`,
+        [input.code, name, toSearchText(name), input.priceCents, now, input.originalCode],
+      );
+      if (changes === 0) throw new MissingProductError();
+      return;
+    }
+    await db.runAsync(
+      `INSERT INTO products (code, name, name_search, price_cents, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
+      [input.code, name, toSearchText(name), input.priceCents, now, now],
+    );
+  } catch (error) {
+    // Otro guardado pudo ganar entre la revisión y la escritura: se reporta igual que un duplicado.
+    if (isUniqueViolation(error)) throw new DuplicateCodeError();
+    throw error;
+  }
 }
 
 export async function deleteProduct(db: SqlDb, code: string): Promise<void> {
@@ -78,7 +105,7 @@ export async function deleteProduct(db: SqlDb, code: string): Promise<void> {
 }
 
 export async function allProducts(db: SqlDb): Promise<Product[]> {
-  const rows = await db.getAllAsync<Row>(`SELECT ${COLUMNS} FROM products ORDER BY name_search`, []);
+  const rows = await db.getAllAsync<Row>(`SELECT ${COLUMNS} FROM products ORDER BY name_search, code`, []);
   return rows.map(toProduct);
 }
 

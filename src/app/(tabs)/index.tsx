@@ -9,10 +9,11 @@ import { Button } from '@/components/button';
 import { Icon } from '@/components/icon';
 import { ManualEntry } from '@/components/manual-entry';
 import { ScanFrame } from '@/components/scan-frame';
-import { getProduct } from '@/db/products';
+import { findProduct } from '@/db/products';
 import { useLayout } from '@/hooks/use-layout';
 import { useUpdates } from '@/hooks/use-updates';
-import { isValidBarcode, normalizeBarcode } from '@/lib/barcode';
+import { barcodeCandidates } from '@/lib/barcode';
+import { notify } from '@/lib/notify';
 import { colors, radius, space, TOUCH_MIN } from '@/theme';
 
 const BARCODE_TYPES: BarcodeType[] = ['ean13', 'ean8', 'upc_a', 'upc_e', 'code128'];
@@ -22,7 +23,7 @@ const SAME_CODE_PAUSE_MS = 2500;
 export default function ScanScreen() {
   const db = useSQLiteContext();
   const { width, landscape, insets, gutter } = useLayout();
-  const [permission, requestPermission] = useCameraPermissions();
+  const [permission, requestPermission, refreshPermission] = useCameraPermissions();
   const [focused, setFocused] = useState(false);
   const [foreground, setForeground] = useState(AppState.currentState === 'active');
   const [torch, setTorch] = useState(false);
@@ -38,6 +39,8 @@ export default function ScanScreen() {
     useCallback(() => {
       busy.current = false;
       setFocused(true);
+      // La cámara pudo liberarse mientras la pestaña no se veía: se vuelve a intentar.
+      setCameraError(false);
       return () => {
         setFocused(false);
         setTorch(false);
@@ -46,18 +49,27 @@ export default function ScanScreen() {
   );
 
   useEffect(() => {
-    const subscription = AppState.addEventListener('change', (next) => setForeground(next === 'active'));
+    const subscription = AppState.addEventListener('change', (next) => {
+      setForeground(next === 'active');
+      if (next !== 'active') return;
+      // Al volver de los ajustes del teléfono (o de otra app que usaba la cámara) se revisa de nuevo.
+      setCameraError(false);
+      refreshPermission().catch(() => undefined);
+    });
     return () => subscription.remove();
-  }, []);
+  }, [refreshPermission]);
 
   const openCode = useCallback(
-    async (code: string) => {
+    async (codes: string[]) => {
       try {
-        const product = await getProduct(db, code);
-        if (product) router.push({ pathname: '/producto/[codigo]', params: { codigo: code } });
-        else router.push({ pathname: '/producto/formulario', params: { codigo: code, desdeEscaneo: '1' } });
+        const product = await findProduct(db, codes);
+        if (product) router.push({ pathname: '/producto/[codigo]', params: { codigo: product.code } });
+        else router.push({ pathname: '/producto/formulario', params: { codigo: codes[0], desdeEscaneo: '1' } });
       } catch {
         busy.current = false;
+        // Permite volver a leer el mismo código enseguida.
+        lastScan.current = { code: '', at: 0 };
+        notify('No se pudo buscar el precio. Inténtalo otra vez.');
       }
     },
     [db],
@@ -66,14 +78,15 @@ export default function ScanScreen() {
   const onScanned = useCallback(
     ({ data, type }: BarcodeScanningResult) => {
       if (busy.current) return;
-      const code = normalizeBarcode(data, type);
+      const codes = barcodeCandidates(data, type);
+      const code = codes[0];
       const now = Date.now();
-      if (!isValidBarcode(code)) return;
+      if (!code) return;
       if (code === lastScan.current.code && now - lastScan.current.at < SAME_CODE_PAUSE_MS) return;
       busy.current = true;
       lastScan.current = { code, at: now };
       Vibration.vibrate(40);
-      openCode(code);
+      openCode(codes);
     },
     [openCode],
   );
@@ -81,7 +94,7 @@ export default function ScanScreen() {
   const submitManual = (code: string) => {
     setManualOpen(false);
     busy.current = true;
-    openCode(code);
+    openCode(barcodeCandidates(code));
   };
 
   const cameraOn = !!permission?.granted && focused && foreground && !manualOpen && !cameraError;
@@ -161,7 +174,9 @@ export default function ScanScreen() {
                     ? 'Cierra otras apps que la estén usando o escribe el número del producto.'
                     : 'Se usa solo para leer códigos de barras. No se guardan fotos.'}
                 </Text>
-                {cameraError ? null : permission.canAskAgain ? (
+                {cameraError ? (
+                  <Button label="Reintentar cámara" icon="refresh" variant="amber" onPress={() => setCameraError(false)} />
+                ) : permission.canAskAgain ? (
                   <Button label="Permitir cámara" variant="amber" onPress={requestPermission} />
                 ) : (
                   <Button label="Abrir ajustes del teléfono" variant="amber" onPress={Linking.openSettings} />

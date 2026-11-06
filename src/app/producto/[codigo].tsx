@@ -14,22 +14,42 @@ import { shortDate } from '@/lib/dates';
 import { colors, radius, space } from '@/theme';
 
 export default function ProductScreen() {
-  const { codigo } = useLocalSearchParams<{ codigo: string }>();
+  const params = useLocalSearchParams<{ codigo: string | string[] }>();
+  const codigo = (Array.isArray(params.codigo) ? params.codigo[0] : params.codigo) ?? '';
   const db = useSQLiteContext();
   const { landscape } = useLayout();
   const [product, setProduct] = useState<Product | null | undefined>();
+  const [failed, setFailed] = useState(false);
 
-  useFocusEffect(
-    useCallback(() => {
-      let current = true;
-      getProduct(db, codigo).then((found) => {
-        if (current) setProduct(found);
-      });
-      return () => {
-        current = false;
-      };
-    }, [db, codigo]),
-  );
+  const load = useCallback(() => {
+    let current = true;
+    getProduct(db, codigo).then(
+      (found) => {
+        if (!current) return;
+        setProduct(found);
+        setFailed(false);
+      },
+      () => {
+        if (current) setFailed(true);
+      },
+    );
+    return () => {
+      current = false;
+    };
+  }, [db, codigo]);
+
+  useFocusEffect(load);
+
+  if (failed) {
+    return (
+      <Page top={false} bottom>
+        <AppText variant="heading">No se pudo leer el precio</AppText>
+        <AppText>Tus datos siguen guardados. Inténtalo otra vez.</AppText>
+        <Button label="Reintentar" icon="refresh" onPress={() => load()} />
+        <Button label="Escanear otro" icon="scan" variant="secondary" onPress={() => router.dismissTo('/')} />
+      </Page>
+    );
+  }
 
   if (product === undefined) return <View style={styles.blank} />;
 

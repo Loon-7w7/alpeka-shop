@@ -21,28 +21,38 @@ export default function ProductsScreen() {
   const [query, setQuery] = useState('');
   const [items, setItems] = useState<Product[] | null>(null);
   const [total, setTotal] = useState(0);
-
-  const load = useCallback(
-    async (text: string) => {
-      const [found, count] = await Promise.all([searchProducts(db, text), countProducts(db)]);
-      setItems(found);
-      setTotal(count);
-    },
-    [db],
-  );
+  const [failed, setFailed] = useState(false);
+  // Cambia cada vez que la pestaña vuelve a verse (o al tocar Reintentar) para recargar con la búsqueda actual.
+  const [reloadKey, setReloadKey] = useState(0);
 
   useFocusEffect(
     useCallback(() => {
-      load(query);
-      // Recargar al volver a la pantalla; escribir ya lo cubre el efecto de abajo.
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [load]),
+      setReloadKey((key) => key + 1);
+      // El contador es solo informativo: si falla se conserva el último valor.
+      countProducts(db).then(setTotal, () => undefined);
+    }, [db]),
   );
 
   useEffect(() => {
-    const timer = setTimeout(() => load(query), 150);
-    return () => clearTimeout(timer);
-  }, [query, load]);
+    let current = true;
+    const timer = setTimeout(() => {
+      searchProducts(db, query).then(
+        (found) => {
+          // Una búsqueda vieja que termina tarde no debe pisar la del texto actual.
+          if (!current) return;
+          setItems(found);
+          setFailed(false);
+        },
+        () => {
+          if (current) setFailed(true);
+        },
+      );
+    }, 150);
+    return () => {
+      current = false;
+      clearTimeout(timer);
+    };
+  }, [db, query, reloadKey]);
 
   const add = () => router.push({ pathname: '/producto/formulario', params: { nombre: query.trim() } });
   const renderItem = useCallback(({ item }: { item: Product }) => <ProductRow product={item} onOpen={openProduct} />, []);
@@ -78,7 +88,7 @@ export default function ProductsScreen() {
       </View>
       <FlatList
         style={styles.list}
-        data={items ?? []}
+        data={failed ? [] : (items ?? [])}
         keyExtractor={keyOf}
         renderItem={renderItem}
         initialNumToRender={14}
@@ -89,7 +99,13 @@ export default function ProductsScreen() {
         keyboardDismissMode="on-drag"
         contentContainerStyle={[horizontal, styles.listContent]}
         ListEmptyComponent={
-          items === null ? undefined : (
+          failed ? (
+            <View style={[styles.empty, { width: contentWidth }]}>
+              <AppText variant="heading" style={styles.center}>No se pudieron leer los productos</AppText>
+              <AppText variant="muted" style={styles.center}>Tus precios siguen guardados. Inténtalo otra vez.</AppText>
+              <Button label="Reintentar" icon="refresh" variant="secondary" onPress={() => setReloadKey((key) => key + 1)} />
+            </View>
+          ) : items === null ? undefined : (
             <View style={[styles.empty, { width: contentWidth }]}>
               <AppText variant="heading" style={styles.center}>
                 {query.trim() ? `No hay productos con “${query.trim()}”` : 'Aún no hay productos'}

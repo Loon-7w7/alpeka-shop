@@ -31,7 +31,7 @@ Run lint and typecheck before declaring any task done.
 
 ## Building with EAS
 
-Use EAS to build and sign the APK in the cloud (`eas build`). This app does NOT use `eas update`: every update is an APK published in GitHub Releases. Run EAS CLI as `bunx eas-cli <command>` in Bun projects, or `npx eas-cli@latest <command>` otherwise; substitute that for bare `eas` in docs examples.
+Use EAS to build and sign the APK in the cloud (`eas build`). Updates use two channels: JS/asset changes ship as **EAS Update** (channel `production`, published automatically by `.eas/workflows/publish-update.yml` on push to `main`; `runtimeVersion` uses the `fingerprint` policy), and native changes (new native library, permissions, config plugins, SDK upgrade) ship as a new APK in GitHub Releases with `version.json`. `eas update` does not receive `eas.json` build `env`, so `EXPO_PUBLIC_*` values the app needs at runtime must also have a safe default in code (see `src/config.ts`). Run EAS CLI as `bunx eas-cli <command>` in Bun projects, or `npx eas-cli@latest <command>` otherwise; substitute that for bare `eas` in docs examples.
 Docs: https://docs.expo.dev/eas/index.md
 
 ## Rules

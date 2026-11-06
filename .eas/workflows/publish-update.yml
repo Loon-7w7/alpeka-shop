@@ -1,0 +1,23 @@
+# Publica un EAS Update en el canal "production" cada vez que se sube código de la app a main.
+# Solo llega a los APK con el mismo runtime (fingerprint). Si cambiaste algo nativo
+# (librería nueva, permisos, plugins en app.json) hace falta un APK nuevo por GitHub Releases.
+name: Publicar update
+
+on:
+  push:
+    branches: ['main']
+    paths:
+      - 'src/**'
+      - 'assets/**'
+      - 'app.json'
+      - 'package.json'
+      - 'package-lock.json'
+
+jobs:
+  publish_update:
+    name: Publicar update en production
+    type: update
+    environment: production
+    params:
+      channel: production
+      platform: android

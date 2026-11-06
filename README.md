@@ -29,12 +29,28 @@ EAS guarda la clave de firma. Descarga una copia con `npx eas-cli@latest credent
 
 ## Publicar una actualización
 
+Hay dos caminos según lo que cambió.
+
+### Cambios de pantallas, textos o lógica: EAS Update (automático)
+
+Haz `git push` a `main`. El workflow `.eas/workflows/publish-update.yml` publica un update en el canal `production`. La app lo descarga en segundo plano y lo aplica la próxima vez que se abre, sin interrumpir al cajero.
+
+En [expo.dev](https://expo.dev/accounts/alpeka/projects/alpeka-shop) → **Updates** ves cada update, a qué APK llega y puedes revertirlo. En **Workflows** ves cada publicación.
+
+Para que el workflow corra, el repositorio tiene que estar vinculado una vez: en expo.dev → proyecto → **Project settings → GitHub**, conecta `Loon-7w7/alpeka-shop`.
+
+Para publicar a mano: `npx eas-cli@latest update --channel production --environment production --platform android --message "Qué cambió"`.
+
+### Cambios nativos: APK nuevo por GitHub Releases
+
+Si agregaste una librería con código nativo, cambiaste permisos o plugins en `app.json`, o actualizaste el SDK, el update no llega a los APK viejos (el `runtimeVersion` es un fingerprint de la parte nativa). Hace falta un APK nuevo:
+
 1. Sube `version` en `app.json`, por ejemplo de `1.0.0` a `1.1.0`.
 2. Genera el APK: `npm run build:apk`.
 3. Crea el archivo de versión:
 
    ```bash
-   node scripts/make-version-json.mjs alpeka-shop.apk TU_USUARIO/alpeka-shop "Qué cambió"
+   node scripts/make-version-json.mjs alpeka-shop.apk Loon-7w7/alpeka-shop "Qué cambió"
    ```
 
 4. Crea un Release llamado exactamente `v1.1.0` y adjunta `alpeka-shop.apk` y `version.json`:

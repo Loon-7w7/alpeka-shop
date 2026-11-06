@@ -12,7 +12,10 @@ export default function TabsLayout() {
   const [welcomed, setWelcomed] = useState<boolean | null>(null);
 
   useEffect(() => {
-    getSetting(db, 'welcome_seen').then((value) => setWelcomed(value !== null));
+    getSetting(db, 'welcome_seen')
+      .then((value) => setWelcomed(value !== null))
+      // Si no se puede leer, mejor saltar la bienvenida que dejar la app en blanco.
+      .catch(() => setWelcomed(true));
   }, [db]);
 
   if (welcomed === null) return null;

@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import { useState } from 'react';
 import { useSQLiteContext } from 'expo-sqlite';
 import { Image, ScrollView, StyleSheet, View } from 'react-native';
 
@@ -25,9 +26,20 @@ export default function Welcome() {
   const { width, height, landscape, insets, gutter } = useLayout();
   const art = landscape ? Math.min(height * 0.72, width * 0.36) : Math.min(width * 0.82, height * 0.38, 420);
 
+  const [starting, setStarting] = useState(false);
+  const [failed, setFailed] = useState(false);
+
   const start = async () => {
-    await setSetting(db, 'welcome_seen', '1');
-    router.replace('/');
+    if (starting) return;
+    setStarting(true);
+    setFailed(false);
+    try {
+      await setSetting(db, 'welcome_seen', '1');
+      router.replace('/');
+    } catch {
+      setFailed(true);
+      setStarting(false);
+    }
   };
 
   return (
@@ -63,7 +75,8 @@ export default function Welcome() {
           <Point text="No necesitas internet ni cuenta" />
         </View>
         <View style={styles.action}>
-          <Button label="Empezar" large onPress={start} />
+          {failed ? <AppText variant="error">No se pudo continuar. Cierra la app y vuelve a abrirla.</AppText> : null}
+          <Button label="Empezar" large loading={starting} onPress={start} />
         </View>
       </ScrollView>
     </View>
