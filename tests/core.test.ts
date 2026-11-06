@@ -283,3 +283,37 @@ test('la cuenta se guarda en settings sin tocar productos', async () => {
   assert.equal(await getSetting(db, 'cart'), '{"v":1,"items":[]}');
   assert.equal(await countProducts(db), 0);
 });
+
+test('todos los temas se leen bien (contraste WCAG AA)', async () => {
+  const { contrast, PALETTES, THEME_COLORS } = await import('../src/theme/palettes.ts');
+  // [texto, fondo]: cada par que la app pinta uno sobre otro.
+  const pairs = [
+    ['ink', 'ground'], ['ink', 'surface'], ['muted', 'ground'], ['muted', 'surface'],
+    ['accent', 'ground'], ['accent', 'surface'], ['ink', 'primarySoft'], ['onPrimary', 'primary'],
+    ['onPrimary', 'highlight'], ['danger', 'surface'], ['danger', 'dangerSoft'], ['highlight', 'camera'], ['highlight', 'cameraPanel'],
+  ] as const;
+  for (const color of THEME_COLORS) {
+    for (const scheme of ['light', 'dark'] as const) {
+      const p = PALETTES[color][scheme];
+      assert.equal(p.scheme, scheme);
+      for (const [fg, bg] of pairs) {
+        const ratio = contrast(p[fg], p[bg]);
+        assert.ok(ratio >= 4.5, `${color} ${scheme}: ${fg} sobre ${bg} = ${ratio.toFixed(2)}`);
+      }
+    }
+  }
+});
+
+test('el tema guardado se valida antes de usarse', async () => {
+  const { isThemeColor, isThemeMode } = await import('../src/theme/palettes.ts');
+  assert.ok(isThemeColor('rosa') && isThemeColor('azul'));
+  assert.ok(!isThemeColor('morado') && !isThemeColor(null));
+  assert.ok(isThemeMode('system') && isThemeMode('dark'));
+  assert.ok(!isThemeMode('noche'));
+  const db = openDb();
+  await migrate(db);
+  await setSetting(db, 'theme_color', 'verde');
+  await setSetting(db, 'theme_mode', 'dark');
+  assert.equal(await getSetting(db, 'theme_color'), 'verde');
+  assert.equal(await getSetting(db, 'theme_mode'), 'dark');
+});

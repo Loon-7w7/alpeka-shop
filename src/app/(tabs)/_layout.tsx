@@ -5,9 +5,10 @@ import { useEffect, useState } from 'react';
 
 import { ICONS } from '@/components/icon';
 import { getSetting } from '@/db/settings';
-import { colors } from '@/theme';
+import { useColors } from '@/theme';
 
 export default function TabsLayout() {
+  const colors = useColors();
   const db = useSQLiteContext();
   const [welcomed, setWelcomed] = useState<boolean | null>(null);
 
@@ -25,9 +26,9 @@ export default function TabsLayout() {
     <NativeTabs
       backgroundColor={colors.surface}
       indicatorColor={colors.primarySoft}
-      tintColor={colors.primary}
-      iconColor={{ default: colors.muted, selected: colors.primary }}
-      labelStyle={{ default: { color: colors.muted }, selected: { color: colors.primary } }}>
+      tintColor={colors.accent}
+      iconColor={{ default: colors.muted, selected: colors.accent }}
+      labelStyle={{ default: { color: colors.muted }, selected: { color: colors.accent } }}>
       <NativeTabs.Trigger name="index">
         <NativeTabs.Trigger.Label>Escanear</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon src={ICONS.scan} renderingMode="template" />

@@ -6,8 +6,8 @@
     "orientation": "default",
     "icon": "./assets/images/icon.png",
     "scheme": "alpekashop",
-    "userInterfaceStyle": "light",
-    "backgroundColor": "#F4F7F5",
+    "userInterfaceStyle": "automatic",
+    "backgroundColor": "#FDF5F8",
     "assetBundlePatterns": [
       "assets/icons/*",
       "assets/images/alpaca.png"

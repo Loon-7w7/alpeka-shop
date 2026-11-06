@@ -11,9 +11,11 @@ import { PriceTag } from '@/components/price-tag';
 import { getProduct, type Product } from '@/db/products';
 import { useLayout } from '@/hooks/use-layout';
 import { shortDate } from '@/lib/dates';
-import { colors, radius, space } from '@/theme';
+import { makeStyles, useColors, radius, space } from '@/theme';
 
 export default function ProductScreen() {
+  const colors = useColors();
+  const styles = useStyles();
   const params = useLocalSearchParams<{ codigo: string | string[] }>();
   const codigo = (Array.isArray(params.codigo) ? params.codigo[0] : params.codigo) ?? '';
   const db = useSQLiteContext();
@@ -101,7 +103,7 @@ export default function ProductScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   blank: { flex: 1, backgroundColor: colors.ground },
   status: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   statusIcon: {
@@ -112,7 +114,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: colors.primary,
   },
-  statusText: { fontSize: 15, fontWeight: '700', color: colors.primary },
+  statusText: { fontSize: 15, fontWeight: '700', color: colors.accent },
   name: { fontSize: 28, lineHeight: 34, fontWeight: '700' },
   stack: { gap: space.lg },
   columns: { flexDirection: 'row', gap: space.lg },
@@ -130,4 +132,4 @@ const styles = StyleSheet.create({
   detailLine: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
   detailValue: { fontWeight: '600', fontVariant: ['tabular-nums'] },
   actions: { marginTop: 'auto', gap: space.sm + 2 },
-});
+}));

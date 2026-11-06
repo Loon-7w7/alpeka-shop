@@ -1,12 +1,14 @@
 import type { ComponentRef, Ref } from 'react';
-import { StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
+import { TextInput, View, type TextInputProps } from 'react-native';
 
-import { colors, radius, space } from '@/theme';
+import { makeStyles, useColors, radius, space } from '@/theme';
 import { AppText } from './app-text';
 
 type Props = TextInputProps & { label: string; error?: string; prefix?: string; large?: boolean; ref?: Ref<ComponentRef<typeof TextInput>> };
 
 export function Field({ label, error, prefix, large, style, ...input }: Props) {
+  const colors = useColors();
+  const styles = useStyles();
   return (
     <View style={styles.wrap}>
       <AppText variant="strong">{label}</AppText>
@@ -25,7 +27,7 @@ export function Field({ label, error, prefix, large, style, ...input }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   wrap: { gap: space.xs + 2 },
   box: {
     minHeight: 54,
@@ -41,4 +43,4 @@ const styles = StyleSheet.create({
   input: { flex: 1, minWidth: 0, fontSize: 17, color: colors.ink, paddingVertical: space.sm },
   prefix: { marginRight: space.xs, fontWeight: '700', color: colors.muted },
   large: { fontSize: 24, fontWeight: '700' },
-});
+}));

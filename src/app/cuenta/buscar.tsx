@@ -1,6 +1,6 @@
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useEffect, useState } from 'react';
-import { FlatList, StyleSheet, TextInput, View } from 'react-native';
+import { FlatList, TextInput, View } from 'react-native';
 
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
@@ -12,12 +12,14 @@ import { useLayout } from '@/hooks/use-layout';
 import { cartCount, cartTotal } from '@/lib/cart';
 import { formatCents } from '@/lib/money';
 import { notify } from '@/lib/notify';
-import { colors, radius, space } from '@/theme';
+import { makeStyles, useColors, radius, space } from '@/theme';
 
 const keyOf = (item: Product) => item.code;
 
 /** Busca en los productos guardados y suma el que se toque. Solo lee la lista; no la cambia. */
 export default function CartSearchScreen() {
+  const colors = useColors();
+  const styles = useStyles();
   const db = useSQLiteContext();
   const { items: cart, add } = useCart();
   const { insets, gutter, contentWidth } = useLayout();
@@ -122,7 +124,7 @@ export default function CartSearchScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   root: { flex: 1, backgroundColor: colors.ground },
   head: { alignItems: 'center', paddingTop: space.sm, paddingBottom: space.md },
   headInner: { gap: space.sm },
@@ -143,4 +145,4 @@ const styles = StyleSheet.create({
   empty: { alignSelf: 'stretch', gap: space.md, padding: space.xl, borderRadius: radius.lg, backgroundColor: colors.surface },
   center: { textAlign: 'center' },
   footer: { padding: space.lg },
-});
+}));

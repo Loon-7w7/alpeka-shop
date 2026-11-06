@@ -3,13 +3,15 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { lineTotal, QTY_MAX, type CartItem } from '@/lib/cart';
 import { formatCents } from '@/lib/money';
-import { colors, radius, space, TOUCH_MIN } from '@/theme';
+import { makeStyles, useColors, radius, space, TOUCH_MIN } from '@/theme';
 import { AppText } from './app-text';
 import { Icon, type IconName } from './icon';
 
 type Props = { item: CartItem; onQty: (id: string, qty: number) => void };
 
 function Step({ icon, label, disabled, onPress }: { icon: IconName; label: string; disabled?: boolean; onPress: () => void }) {
+  const colors = useColors();
+  const styles = useStyles();
   return (
     <Pressable
       accessibilityRole="button"
@@ -25,6 +27,7 @@ function Step({ icon, label, disabled, onPress }: { icon: IconName; label: strin
 }
 
 export const CartRow = memo(function CartRow({ item, onQty }: Props) {
+  const styles = useStyles();
   const unit = formatCents(item.priceCents);
   const total = formatCents(lineTotal(item));
   return (
@@ -57,7 +60,7 @@ export const CartRow = memo(function CartRow({ item, onQty }: Props) {
   );
 });
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -80,4 +83,4 @@ const styles = StyleSheet.create({
   },
   step: { width: TOUCH_MIN, height: TOUCH_MIN - 6, alignItems: 'center', justifyContent: 'center' },
   qty: { minWidth: 32, textAlign: 'center', fontSize: 17, fontWeight: '700', color: colors.ink, fontVariant: ['tabular-nums'] },
-});
+}));

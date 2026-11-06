@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { AccessibilityInfo, Animated, Easing, StyleSheet, View } from 'react-native';
+import { AccessibilityInfo, Animated, Easing, View } from 'react-native';
 
-import { colors } from '@/theme';
+import { makeStyles } from '@/theme';
 
 const CORNER = 40;
 
 export function ScanFrame({ width, height, active }: { width: number; height: number; active: boolean }) {
+  const styles = useStyles();
   const [progress] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
@@ -41,11 +42,11 @@ export function ScanFrame({ width, height, active }: { width: number; height: nu
   );
 }
 
-const styles = StyleSheet.create({
-  corner: { position: 'absolute', width: CORNER, height: CORNER, borderColor: colors.amber },
+const useStyles = makeStyles((colors) => ({
+  corner: { position: 'absolute', width: CORNER, height: CORNER, borderColor: colors.highlight },
   tl: { top: 0, left: 0, borderTopWidth: 4, borderLeftWidth: 4, borderTopLeftRadius: 16 },
   tr: { top: 0, right: 0, borderTopWidth: 4, borderRightWidth: 4, borderTopRightRadius: 16 },
   bl: { bottom: 0, left: 0, borderBottomWidth: 4, borderLeftWidth: 4, borderBottomLeftRadius: 16 },
   br: { bottom: 0, right: 0, borderBottomWidth: 4, borderRightWidth: 4, borderBottomRightRadius: 16 },
-  line: { position: 'absolute', left: 16, right: 16, height: 3, borderRadius: 2, backgroundColor: colors.amber },
-});
+  line: { position: 'absolute', left: 16, right: 16, height: 3, borderRadius: 2, backgroundColor: colors.highlight },
+}));

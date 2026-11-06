@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, View } from 'react-native';
 
 import { useLayout } from '@/hooks/use-layout';
 import { parsePriceToCents } from '@/lib/money';
-import { colors, space } from '@/theme';
+import { makeStyles, space } from '@/theme';
 import { AppText } from './app-text';
 import { Button } from './button';
 import { Field } from './field';
@@ -19,6 +19,7 @@ type Props = {
 
 /** Pide un precio para sumarlo a la cuenta. No guarda ningún producto. */
 export function PriceEntry({ visible, title, subtitle, onClose, onSubmit }: Props) {
+  const styles = useStyles();
   const [price, setPrice] = useState('');
   const [name, setName] = useState('');
   const [error, setError] = useState<string>();
@@ -95,7 +96,7 @@ export function PriceEntry({ visible, title, subtitle, onClose, onSubmit }: Prop
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(8,20,17,0.6)' },
   dismiss: { flex: 1 },
   sheet: {
@@ -106,4 +107,4 @@ const styles = StyleSheet.create({
   },
   sheetContent: { paddingTop: space.xl, alignItems: 'center' },
   inner: { gap: space.md },
-});
+}));

@@ -14,13 +14,15 @@ import { useLayout } from '@/hooks/use-layout';
 import { useUpdates } from '@/hooks/use-updates';
 import { barcodeCandidates } from '@/lib/barcode';
 import { notify } from '@/lib/notify';
-import { colors, radius, space, TOUCH_MIN } from '@/theme';
+import { makeStyles, useColors, radius, space, TOUCH_MIN } from '@/theme';
 
 const BARCODE_TYPES: BarcodeType[] = ['ean13', 'ean8', 'upc_a', 'upc_e', 'code128'];
 const SCANNER_SETTINGS = { barcodeTypes: BARCODE_TYPES };
 const SAME_CODE_PAUSE_MS = 2500;
 
 export default function ScanScreen() {
+  const colors = useColors();
+  const styles = useStyles();
   const db = useSQLiteContext();
   const { width, landscape, insets, gutter } = useLayout();
   const [permission, requestPermission, refreshPermission] = useCameraPermissions();
@@ -140,14 +142,14 @@ export default function ScanScreen() {
               hitSlop={8}
               onPress={() => setTorch((on) => !on)}
               style={[styles.torch, torch && styles.torchOn]}>
-              <Icon name="flash" color={torch ? colors.ink : '#FFFFFF'} />
+              <Icon name="flash" color={torch ? colors.onPrimary : '#FFFFFF'} />
             </Pressable>
           ) : null}
         </View>
 
         {update ? (
           <Pressable accessibilityRole="button" onPress={() => router.navigate('/ajustes')} style={styles.updateBanner}>
-            <Icon name="refresh" size={18} color={colors.ink} />
+            <Icon name="refresh" size={18} color={colors.onPrimary} />
             <Text maxFontSizeMultiplier={1.3} style={styles.updateText}>Hay una versión nueva: {update}. Toca para ver.</Text>
           </Pressable>
         ) : null}
@@ -175,11 +177,11 @@ export default function ScanScreen() {
                     : 'Se usa solo para leer códigos de barras. No se guardan fotos.'}
                 </Text>
                 {cameraError ? (
-                  <Button label="Reintentar cámara" icon="refresh" variant="amber" onPress={() => setCameraError(false)} />
+                  <Button label="Reintentar cámara" icon="refresh" variant="highlight" onPress={() => setCameraError(false)} />
                 ) : permission.canAskAgain ? (
-                  <Button label="Permitir cámara" variant="amber" onPress={requestPermission} />
+                  <Button label="Permitir cámara" variant="highlight" onPress={requestPermission} />
                 ) : (
-                  <Button label="Abrir ajustes del teléfono" variant="amber" onPress={Linking.openSettings} />
+                  <Button label="Abrir ajustes del teléfono" variant="highlight" onPress={Linking.openSettings} />
                 )}
               </View>
             ) : null}
@@ -194,12 +196,12 @@ export default function ScanScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   root: { flex: 1, backgroundColor: colors.camera },
   scrim: { flex: 1, minHeight: 0, overflow: 'hidden', gap: space.md, backgroundColor: 'rgba(8,20,17,0.42)' },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.md },
   headerText: { flex: 1, minWidth: 0 },
-  brand: { color: colors.amber, fontSize: 14, fontWeight: '700' },
+  brand: { color: colors.highlight, fontSize: 14, fontWeight: '700' },
   title: { color: '#FFFFFF', fontSize: 28, lineHeight: 34, fontWeight: '700' },
   torch: {
     width: TOUCH_MIN,
@@ -209,7 +211,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: 'rgba(42,68,61,0.9)',
   },
-  torchOn: { backgroundColor: colors.amber },
+  torchOn: { backgroundColor: colors.highlight },
   updateBanner: {
     minHeight: TOUCH_MIN,
     flexDirection: 'row',
@@ -218,9 +220,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.md,
     paddingVertical: space.sm,
     borderRadius: radius.md,
-    backgroundColor: colors.amber,
+    backgroundColor: colors.highlight,
   },
-  updateText: { flex: 1, color: colors.ink, fontSize: 14, fontWeight: '600' },
+  updateText: { flex: 1, color: colors.onPrimary, fontSize: 14, fontWeight: '600' },
   body: { flex: 1, minHeight: 0, gap: space.md },
   bodyRow: { flexDirection: 'row', alignItems: 'center' },
   center: { flex: 1, minWidth: 0, minHeight: 0, alignSelf: 'stretch', alignItems: 'center', justifyContent: 'center', gap: space.sm },
@@ -228,4 +230,4 @@ const styles = StyleSheet.create({
   subHint: { color: colors.cameraMuted, fontSize: 14, textAlign: 'center' },
   message: { gap: space.md, maxWidth: 420, alignSelf: 'stretch' },
   sideAction: { width: 200 },
-});
+}));

@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Alert, FlatList, StyleSheet, Text, View } from 'react-native';
+import { Alert, FlatList, Text, View } from 'react-native';
 
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
@@ -11,13 +11,14 @@ import { useCart } from '@/hooks/use-cart';
 import { useLayout } from '@/hooks/use-layout';
 import { cartCount, cartTotal, changeFor, LOOSE_NAME, type CartItem } from '@/lib/cart';
 import { centsToInput, formatCents, parsePriceToCents } from '@/lib/money';
-import { colors, radius, space } from '@/theme';
+import { makeStyles, radius, space } from '@/theme';
 
 const BILLS = [2000, 5000, 10000, 20000, 50000];
 const articles = (n: number) => (n === 1 ? '1 artículo' : `${n.toLocaleString('es-MX')} artículos`);
 const keyOf = (item: CartItem) => item.id;
 
 export default function CartScreen() {
+  const styles = useStyles();
   const { items, ready, add, setQty, clear } = useCart();
   const { insets, gutter, contentWidth } = useLayout();
   const [looseOpen, setLooseOpen] = useState(false);
@@ -60,7 +61,7 @@ export default function CartScreen() {
               {formatCents(total)}
             </Text>
             {change !== null && total > 0 ? (
-              <Text maxFontSizeMultiplier={1.3} style={[styles.changeLine, change < 0 && styles.changeLineShort]}>
+              <Text maxFontSizeMultiplier={1.3} style={styles.changeLine}>
                 {change >= 0 ? `Cambio: ${formatCents(change)}` : `Faltan: ${formatCents(-change)}`}
               </Text>
             ) : null}
@@ -152,17 +153,16 @@ export default function CartScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   root: { flex: 1, backgroundColor: colors.ground },
   head: { alignItems: 'center', paddingBottom: space.md },
   headInner: { gap: space.md },
   titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.md, flexWrap: 'wrap' },
   titleText: { flexShrink: 1 },
   totalCard: { borderRadius: radius.lg, backgroundColor: colors.primary, paddingVertical: space.md, paddingHorizontal: space.lg },
-  totalLabel: { color: colors.primarySoft, fontSize: 15, fontWeight: '600' },
+  totalLabel: { color: colors.onPrimary, fontSize: 15, fontWeight: '600' },
   totalValue: { color: colors.onPrimary, fontSize: 40, lineHeight: 48, fontWeight: '800', fontVariant: ['tabular-nums'] },
-  changeLine: { color: colors.amber, fontSize: 17, fontWeight: '700', fontVariant: ['tabular-nums'] },
-  changeLineShort: { color: '#FFD9D4' },
+  changeLine: { color: colors.onPrimary, fontSize: 17, fontWeight: '700', fontVariant: ['tabular-nums'] },
   actions: { gap: space.sm },
   actionRow: { flexDirection: 'row', gap: space.sm },
   action: { flex: 1 },
@@ -176,4 +176,4 @@ const styles = StyleSheet.create({
   changeCardShort: { backgroundColor: colors.dangerSoft },
   changeValue: { color: colors.ink, fontSize: 32, lineHeight: 40, fontWeight: '800', fontVariant: ['tabular-nums'] },
   changeValueShort: { color: colors.danger },
-});
+}));

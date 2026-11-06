@@ -16,7 +16,7 @@ import { barcodeCandidates } from '@/lib/barcode';
 import { cartCount, cartTotal } from '@/lib/cart';
 import { formatCents } from '@/lib/money';
 import { notify } from '@/lib/notify';
-import { colors, radius, space, TOUCH_MIN } from '@/theme';
+import { makeStyles, useColors, radius, space, TOUCH_MIN } from '@/theme';
 
 const BARCODE_TYPES: BarcodeType[] = ['ean13', 'ean8', 'upc_a', 'upc_e', 'code128'];
 const SCANNER_SETTINGS = { barcodeTypes: BARCODE_TYPES };
@@ -27,6 +27,8 @@ type Last = { name: string; priceCents: number } | null;
 
 /** Escaneo continuo: cada código leído se suma a la cuenta sin salir de la cámara. */
 export default function CartScanScreen() {
+  const colors = useColors();
+  const styles = useStyles();
   const db = useSQLiteContext();
   const { items, add } = useCart();
   const { width, insets, gutter } = useLayout();
@@ -142,7 +144,7 @@ export default function CartScanScreen() {
               hitSlop={8}
               onPress={() => setTorch((on) => !on)}
               style={[styles.torch, torch && styles.torchOn]}>
-              <Icon name="flash" color={torch ? colors.ink : '#FFFFFF'} />
+              <Icon name="flash" color={torch ? colors.onPrimary : '#FFFFFF'} />
             </Pressable>
           ) : null}
         </View>
@@ -156,11 +158,11 @@ export default function CartScanScreen() {
                 {cameraError ? 'No se pudo abrir la cámara' : 'Falta permiso para usar la cámara'}
               </Text>
               {cameraError ? (
-                <Button label="Reintentar cámara" icon="refresh" variant="amber" onPress={() => setCameraError(false)} />
+                <Button label="Reintentar cámara" icon="refresh" variant="highlight" onPress={() => setCameraError(false)} />
               ) : permission.canAskAgain ? (
-                <Button label="Permitir cámara" variant="amber" onPress={requestPermission} />
+                <Button label="Permitir cámara" variant="highlight" onPress={requestPermission} />
               ) : (
-                <Button label="Abrir ajustes del teléfono" variant="amber" onPress={Linking.openSettings} />
+                <Button label="Abrir ajustes del teléfono" variant="highlight" onPress={Linking.openSettings} />
               )}
             </View>
           ) : null}
@@ -180,7 +182,7 @@ export default function CartScanScreen() {
               {formatCents(cartTotal(items))}
             </Text>
           </View>
-          <Button label="Listo, ver la cuenta" icon="check" variant="amber" onPress={() => router.back()} />
+          <Button label="Listo, ver la cuenta" icon="check" variant="highlight" onPress={() => router.back()} />
         </View>
       </View>
 
@@ -201,7 +203,7 @@ export default function CartScanScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   root: { flex: 1, backgroundColor: colors.camera },
   scrim: { flex: 1, minHeight: 0, overflow: 'hidden', gap: space.md, backgroundColor: 'rgba(8,20,17,0.42)' },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.md },
@@ -214,7 +216,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: 'rgba(42,68,61,0.9)',
   },
-  torchOn: { backgroundColor: colors.amber },
+  torchOn: { backgroundColor: colors.highlight },
   center: { flex: 1, minHeight: 0, alignSelf: 'stretch', alignItems: 'center', justifyContent: 'center' },
   message: { gap: space.md, maxWidth: 420, alignSelf: 'stretch' },
   hint: { color: '#FFFFFF', fontSize: 17, fontWeight: '600', textAlign: 'center' },
@@ -230,5 +232,5 @@ const styles = StyleSheet.create({
   lastText: { color: colors.cameraMuted, fontSize: 15, fontWeight: '600' },
   totalRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: space.md },
   totalLabel: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
-  totalValue: { flexShrink: 1, color: colors.amber, fontSize: 34, lineHeight: 42, fontWeight: '800', fontVariant: ['tabular-nums'] },
-});
+  totalValue: { flexShrink: 1, color: colors.highlight, fontSize: 34, lineHeight: 42, fontWeight: '800', fontVariant: ['tabular-nums'] },
+}));

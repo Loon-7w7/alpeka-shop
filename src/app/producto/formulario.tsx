@@ -1,7 +1,7 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useRef, useState, type ComponentRef } from 'react';
-import { Alert, StyleSheet, TextInput, View } from 'react-native';
+import { Alert, TextInput, View } from 'react-native';
 
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
@@ -11,7 +11,7 @@ import { deleteProduct, DuplicateCodeError, findProduct, getProduct, MissingProd
 import { barcodeCandidates, isValidBarcode, normalizeBarcode } from '@/lib/barcode';
 import { centsToInput, parsePriceToCents } from '@/lib/money';
 import { notify } from '@/lib/notify';
-import { colors, radius, space } from '@/theme';
+import { makeStyles, radius, space } from '@/theme';
 
 type Errors = { code?: string; name?: string; price?: string; form?: string };
 type Params = { codigo?: string; modo?: string; desdeEscaneo?: string; nombre?: string };
@@ -19,6 +19,7 @@ type Params = { codigo?: string; modo?: string; desdeEscaneo?: string; nombre?: 
 const first = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
 
 export default function ProductForm() {
+  const styles = useStyles();
   const raw = useLocalSearchParams<Params>();
   const params: Params = { codigo: first(raw.codigo), modo: first(raw.modo), desdeEscaneo: first(raw.desdeEscaneo), nombre: first(raw.nombre) };
   const editing = params.modo === 'editar' && !!params.codigo;
@@ -195,7 +196,7 @@ export default function ProductForm() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   notice: { padding: space.lg - 2, borderRadius: radius.md, backgroundColor: colors.primarySoft },
   actions: { marginTop: 'auto', paddingTop: space.sm, gap: space.sm + 2 },
-});
+}));

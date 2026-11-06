@@ -1,11 +1,12 @@
 import type { ReactNode } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 
 import { useLayout } from '@/hooks/use-layout';
-import { colors, space } from '@/theme';
+import { makeStyles, space } from '@/theme';
 
 /** Contenedor con desplazamiento: si no cabe (pantalla chica, letra grande, horizontal), se puede recorrer. */
 export function Page({ children, top = true, bottom = false }: { children: ReactNode; top?: boolean; bottom?: boolean }) {
+  const styles = useStyles();
   const { insets, gutter, contentWidth } = useLayout();
   return (
     <ScrollView
@@ -27,8 +28,8 @@ export function Page({ children, top = true, bottom = false }: { children: React
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   root: { flex: 1, backgroundColor: colors.ground },
   content: { flexGrow: 1, alignItems: 'center' },
   inner: { flexGrow: 1, gap: space.lg },
-});
+}));
