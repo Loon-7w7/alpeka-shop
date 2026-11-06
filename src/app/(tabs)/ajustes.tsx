@@ -1,21 +1,22 @@
 import { useFocusEffect } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useState } from 'react';
-import { Alert, Platform, StyleSheet, View } from 'react-native';
+import { Alert, Platform, Switch, View } from 'react-native';
 
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { Icon } from '@/components/icon';
 import { Page } from '@/components/page';
+import { ThemePicker } from '@/components/theme-picker';
 import { countProducts } from '@/db/products';
-import { getSetting } from '@/db/settings';
+import { getSetting, scanSoundOn, setSetting } from '@/db/settings';
 import { useUpdates } from '@/hooks/use-updates';
 import { shortDate } from '@/lib/dates';
 import { notify } from '@/lib/notify';
 import { BackupError } from '@/services/backup-format';
 import { exportBackup, lastSafetyCopy, pickBackup, restoreBackup, undoLastRestore } from '@/services/backup';
 import { checkForUpdate, currentVersion, downloadAndInstall, updatesSupported } from '@/services/updates';
-import { colors, radius, space } from '@/theme';
+import { makeStyles, useColors, radius, space } from '@/theme';
 
 const errorText = (error: unknown) =>
   error instanceof BackupError ? error.message : 'Algo salió mal. Inténtalo otra vez.';
@@ -23,6 +24,7 @@ const errorText = (error: unknown) =>
 const products = (n: number) => (n === 1 ? '1 producto' : `${n.toLocaleString('es-MX')} productos`);
 
 function UpdatesCard() {
+  const styles = useStyles();
   const state = useUpdates();
   const version = currentVersion();
 
@@ -79,18 +81,26 @@ function UpdatesCard() {
 }
 
 export default function SettingsScreen() {
+  const colors = useColors();
+  const styles = useStyles();
   const db = useSQLiteContext();
   const [count, setCount] = useState<number | null>(null);
   const [lastBackup, setLastBackup] = useState<string | null>(null);
   const [undoDate, setUndoDate] = useState<string | null>(null);
   const [working, setWorking] = useState<'export' | 'restore' | 'undo' | null>(null);
+  const [sound, setSound] = useState(true);
 
   /** Nunca lanza: si algo no se puede leer, se deja lo que ya se mostraba. */
   const load = useCallback(async () => {
     try {
-      const [total, backup] = await Promise.all([countProducts(db), getSetting(db, 'last_backup_at')]);
+      const [total, backup, beep] = await Promise.all([
+        countProducts(db),
+        getSetting(db, 'last_backup_at'),
+        getSetting(db, 'scan_sound'),
+      ]);
       setCount(total);
       setLastBackup(backup);
+      setSound(scanSoundOn(beep));
     } catch {
       // La pantalla sigue funcionando; el número se actualiza al volver a entrar.
     }
@@ -106,6 +116,16 @@ export default function SettingsScreen() {
       load();
     }, [load]),
   );
+
+  const onSound = async (on: boolean) => {
+    setSound(on);
+    try {
+      await setSetting(db, 'scan_sound', on ? '1' : '0');
+    } catch {
+      setSound(!on);
+      notify('No se pudo guardar el ajuste. Inténtalo otra vez.');
+    }
+  };
 
   const onExport = async () => {
     setWorking('export');
@@ -191,12 +211,35 @@ export default function SettingsScreen() {
       <AppText variant="title" accessibilityRole="header">Ajustes</AppText>
 
       <View style={styles.note}>
-        <Icon name="phone" size={24} color={colors.primary} />
+        <Icon name="phone" size={24} color={colors.accent} />
         <View style={styles.noteText}>
           <AppText variant="strong">
             {count === null ? 'Productos en este teléfono' : `${products(count)} en este teléfono`}
           </AppText>
           <AppText>Funciona sin internet. Los precios no salen de aquí.</AppText>
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <AppText variant="heading" accessibilityRole="header">Apariencia</AppText>
+        <ThemePicker />
+      </View>
+
+      <View style={styles.section}>
+        <AppText variant="heading" accessibilityRole="header">Escáner</AppText>
+        <View style={[styles.card, styles.switchRow]}>
+          <View style={styles.switchText}>
+            <AppText variant="strong">Sonido al escanear</AppText>
+            <AppText variant="small">Suena un beep al leer un código. En modo silencio solo vibra.</AppText>
+          </View>
+          <Switch
+            accessibilityLabel="Sonido al escanear"
+            value={sound}
+            onValueChange={onSound}
+            trackColor={{ false: colors.border, true: colors.primary }}
+            thumbColor={sound ? colors.accent : colors.surface}
+            ios_backgroundColor={colors.border}
+          />
         </View>
       </View>
 
@@ -224,7 +267,7 @@ export default function SettingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   note: {
     flexDirection: 'row',
     gap: space.md,
@@ -236,4 +279,6 @@ const styles = StyleSheet.create({
   section: { gap: space.sm + 2 },
   card: { gap: space.md, padding: space.lg, borderRadius: radius.lg, backgroundColor: colors.surface },
   cardText: { gap: 2 },
-});
+  switchRow: { flexDirection: 'row', alignItems: 'center', gap: space.md },
+  switchText: { flex: 1, minWidth: 0, gap: 2 },
+}));

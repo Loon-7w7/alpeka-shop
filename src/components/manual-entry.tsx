@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, View } from 'react-native';
 
 import { useLayout } from '@/hooks/use-layout';
 import { isValidBarcode, normalizeBarcode } from '@/lib/barcode';
-import { colors, space } from '@/theme';
+import { makeStyles, space } from '@/theme';
 import { AppText } from './app-text';
 import { Button } from './button';
 import { Field } from './field';
@@ -11,6 +11,7 @@ import { Field } from './field';
 type Props = { visible: boolean; onClose: () => void; onSubmit: (code: string) => void };
 
 export function ManualEntry({ visible, onClose, onSubmit }: Props) {
+  const styles = useStyles();
   const [value, setValue] = useState('');
   const [error, setError] = useState<string>();
   const { insets, gutter, contentWidth, height } = useLayout();
@@ -66,7 +67,7 @@ export function ManualEntry({ visible, onClose, onSubmit }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(8,20,17,0.6)' },
   dismiss: { flex: 1 },
   sheet: {
@@ -77,4 +78,4 @@ const styles = StyleSheet.create({
   },
   sheetContent: { paddingTop: space.xl, alignItems: 'center' },
   inner: { gap: space.md },
-});
+}));

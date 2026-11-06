@@ -3,12 +3,14 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { Product } from '@/db/products';
 import { formatCents } from '@/lib/money';
-import { colors, space } from '@/theme';
+import { makeStyles, useColors, space } from '@/theme';
 import { AppText } from './app-text';
 
 type Props = { product: Product; onOpen: (code: string) => void };
 
 export const ProductRow = memo(function ProductRow({ product, onOpen }: Props) {
+  const colors = useColors();
+  const styles = useStyles();
   const price = formatCents(product.priceCents);
   return (
     <Pressable
@@ -26,7 +28,7 @@ export const ProductRow = memo(function ProductRow({ product, onOpen }: Props) {
   );
 });
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   row: {
     minHeight: 70,
     flexDirection: 'row',
@@ -40,4 +42,4 @@ const styles = StyleSheet.create({
   },
   text: { flex: 1, minWidth: 0, gap: 2 },
   price: { fontSize: 19, fontWeight: '800', color: colors.ink, fontVariant: ['tabular-nums'] },
-});
+}));

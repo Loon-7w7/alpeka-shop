@@ -53,3 +53,7 @@ version.json
 # Credenciales de firma descargadas con eas credentials (nunca subir)
 credentials.json
 credentials/
+
+# Basura de Git Bash y salida de herramientas de análisis (no son parte de la app)
+*.stackdump
+graphify-out/

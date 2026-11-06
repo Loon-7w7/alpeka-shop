@@ -1,7 +1,7 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useEffect, useState } from 'react';
-import { FlatList, StyleSheet, TextInput, View } from 'react-native';
+import { FlatList, TextInput, View } from 'react-native';
 
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
@@ -9,13 +9,15 @@ import { Icon } from '@/components/icon';
 import { ProductRow } from '@/components/product-row';
 import { countProducts, searchProducts, SEARCH_LIMIT, type Product } from '@/db/products';
 import { useLayout } from '@/hooks/use-layout';
-import { colors, radius, space } from '@/theme';
+import { makeStyles, useColors, radius, space } from '@/theme';
 
 const plural = (n: number) => (n === 1 ? '1 producto' : `${n.toLocaleString('es-MX')} productos`);
 const keyOf = (item: Product) => item.code;
 const openProduct = (code: string) => router.push({ pathname: '/producto/[codigo]', params: { codigo: code } });
 
 export default function ProductsScreen() {
+  const colors = useColors();
+  const styles = useStyles();
   const db = useSQLiteContext();
   const { insets, gutter, contentWidth } = useLayout();
   const [query, setQuery] = useState('');
@@ -131,7 +133,7 @@ export default function ProductsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   root: { flex: 1, backgroundColor: colors.ground },
   head: { alignItems: 'center', paddingBottom: space.md },
   headInner: { gap: space.md },
@@ -154,4 +156,4 @@ const styles = StyleSheet.create({
   empty: { alignSelf: 'center', gap: space.md, padding: space.xl, borderRadius: radius.lg, backgroundColor: colors.surface },
   center: { textAlign: 'center' },
   footer: { padding: space.lg },
-});
+}));

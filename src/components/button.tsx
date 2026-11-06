@@ -1,19 +1,20 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { colors, radius, space, TOUCH_MIN } from '@/theme';
+import { radius, space, TOUCH_MIN, useColors, type Colors } from '@/theme';
 import { Icon, type IconName } from './icon';
 
-type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'amber' | 'white' | 'outlineDark';
+type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'highlight' | 'white' | 'outlineDark';
 
-const palette: Record<Variant, { bg: string; fg: string; border?: string }> = {
+const paletteFor = (colors: Colors): Record<Variant, { bg: string; fg: string; border?: string }> => ({
   primary: { bg: colors.primary, fg: colors.onPrimary },
   secondary: { bg: colors.surface, fg: colors.ink, border: colors.border },
   ghost: { bg: 'transparent', fg: colors.ink },
   danger: { bg: 'transparent', fg: colors.danger },
-  amber: { bg: colors.amber, fg: colors.ink },
+  highlight: { bg: colors.highlight, fg: colors.onPrimary },
   white: { bg: colors.surface, fg: colors.ink },
+  // Sobre la cámara, que siempre es oscura.
   outlineDark: { bg: 'transparent', fg: '#FFFFFF', border: '#5B7870' },
-};
+});
 
 type Props = {
   label: string;
@@ -27,7 +28,7 @@ type Props = {
 };
 
 export function Button({ label, onPress, variant = 'primary', icon, loading, disabled, large, compact }: Props) {
-  const tone = palette[variant];
+  const tone = paletteFor(useColors())[variant];
   const off = disabled || loading;
   return (
     <Pressable

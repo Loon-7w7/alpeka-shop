@@ -1,12 +1,13 @@
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { useLayout } from '@/hooks/use-layout';
 import { formatCents } from '@/lib/money';
-import { colors, radius, space } from '@/theme';
+import { makeStyles, radius, space } from '@/theme';
 import { AppText } from './app-text';
 
 export function PriceTag({ cents }: { cents: number }) {
+  const styles = useStyles();
   const { width, height, compact, landscape } = useLayout();
   const [tagWidth, setTagWidth] = useState(0);
   const price = formatCents(cents);
@@ -21,7 +22,7 @@ export function PriceTag({ cents }: { cents: number }) {
       accessible
       accessibilityLabel={`Cobrar ${price} pesos mexicanos`}>
       <View style={styles.hole} />
-      <AppText variant="strong">Cobrar</AppText>
+      <AppText variant="strong" style={styles.onTag}>Cobrar</AppText>
       <Text
         adjustsFontSizeToFit
         allowFontScaling={false}
@@ -30,14 +31,14 @@ export function PriceTag({ cents }: { cents: number }) {
         style={[styles.price, { fontSize: size, lineHeight: size * 1.12 }]}>
         {price}
       </Text>
-      <AppText style={styles.currency}>pesos mexicanos</AppText>
+      <AppText style={[styles.onTag, styles.currency]}>pesos mexicanos</AppText>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   tag: {
-    backgroundColor: colors.amber,
+    backgroundColor: colors.highlight,
     borderRadius: radius.xl,
     alignItems: 'center',
     paddingHorizontal: space.xl,
@@ -56,9 +57,10 @@ const styles = StyleSheet.create({
   price: {
     alignSelf: 'stretch',
     textAlign: 'center',
-    color: colors.ink,
+    color: colors.onPrimary,
     fontWeight: '800',
     fontVariant: ['tabular-nums'],
   },
+  onTag: { color: colors.onPrimary },
   currency: { fontSize: 14, fontWeight: '500' },
-});
+}));

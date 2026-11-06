@@ -1,20 +1,22 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { useSQLiteContext } from 'expo-sqlite';
-import { Image, ScrollView, StyleSheet, View } from 'react-native';
+import { Image, ScrollView, View } from 'react-native';
 
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { Icon } from '@/components/icon';
 import { setSetting } from '@/db/settings';
 import { useLayout } from '@/hooks/use-layout';
-import { colors, space } from '@/theme';
+import { makeStyles, useColors, space } from '@/theme';
 
 function Point({ text }: { text: string }) {
+  const colors = useColors();
+  const styles = useStyles();
   return (
     <View style={styles.point}>
       <View style={styles.pointIcon}>
-        <Icon name="check" size={16} color={colors.primary} />
+        <Icon name="check" size={16} color={colors.accent} />
       </View>
       <AppText style={styles.pointText}>{text}</AppText>
     </View>
@@ -22,6 +24,7 @@ function Point({ text }: { text: string }) {
 }
 
 export default function Welcome() {
+  const styles = useStyles();
   const db = useSQLiteContext();
   const { width, height, landscape, insets, gutter } = useLayout();
   const art = landscape ? Math.min(height * 0.72, width * 0.36) : Math.min(width * 0.82, height * 0.38, 420);
@@ -83,10 +86,10 @@ export default function Welcome() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   root: { flex: 1, backgroundColor: colors.ground },
   rootRow: { flexDirection: 'row' },
-  hero: { backgroundColor: colors.pink, alignItems: 'center', justifyContent: 'flex-end' },
+  hero: { backgroundColor: colors.highlight, alignItems: 'center', justifyContent: 'flex-end' },
   panel: { flex: 1 },
   panelContent: { flexGrow: 1, gap: space.xl, width: '100%', maxWidth: 600, alignSelf: 'center' },
   copy: { gap: space.xs },
@@ -104,4 +107,4 @@ const styles = StyleSheet.create({
   },
   pointText: { flex: 1, fontWeight: '500' },
   action: { marginTop: 'auto' },
-});
+}));
