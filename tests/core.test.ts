@@ -328,3 +328,75 @@ test('el beep del escáner viene encendido y se puede apagar', async () => {
   await setSetting(db, 'scan_sound', '0');
   assert.equal(scanSoundOn(await getSetting(db, 'scan_sound')), false);
 });
+
+const product = (code: string, name: string, priceCents: number, updatedAt: string) => ({
+  code, name, priceCents, createdAt: '2026-01-01T00:00:00.000Z', updatedAt,
+});
+
+test('recibir productos: el código de barras identifica duplicados y gana el cambio más reciente', async () => {
+  const { planMerge, mergeChanges } = await import('../src/services/product-merge.ts');
+  const current = [
+    product('7501000000011', 'Leche', 2850, '2026-03-01T10:00:00.000Z'),
+    product('7501000000028', 'Pan', 4200, '2026-03-05T10:00:00.000Z'),
+    product('7501000000035', 'Refresco', 1800, '2026-03-01T10:00:00.000Z'),
+    product('7501000000042', 'Solo aquí', 1000, '2026-03-01T10:00:00.000Z'),
+  ];
+  const incoming = [
+    product('7501000000011', 'Leche', 3000, '2026-03-02T10:00:00.000Z'), // más nuevo → actualiza
+    product('7501000000028', 'Pan', 3900, '2026-03-01T10:00:00.000Z'), // más viejo → se queda el de aquí
+    product('7501000000035', 'Refresco', 1800, '2026-04-01T10:00:00.000Z'), // igual → nada
+    product('7501000000059', 'Galletas', 1500, '2026-03-01T10:00:00.000Z'), // nuevo → agrega
+  ];
+  const plan = planMerge(current, incoming);
+  assert.deepEqual(plan.add.map((p) => p.code), ['7501000000059']);
+  assert.equal(plan.update.length, 1);
+  assert.equal(plan.update[0].before.priceCents, 2850);
+  assert.equal(plan.update[0].after.priceCents, 3000);
+  // Conserva la fecha de creación de este teléfono y la del cambio que llegó.
+  assert.equal(plan.update[0].after.createdAt, '2026-01-01T00:00:00.000Z');
+  assert.equal(plan.update[0].after.updatedAt, '2026-03-02T10:00:00.000Z');
+  assert.equal(plan.keptNewer, 1);
+  assert.equal(plan.same, 1);
+  assert.equal(mergeChanges(plan), 2);
+});
+
+test('recibir productos: UPC-A y EAN-13 del mismo producto se reconocen como el mismo código', async () => {
+  const { planMerge } = await import('../src/services/product-merge.ts');
+  const file = createBackup([{ ...product('036000291452', 'Atún', 2500, '2026-05-01T00:00:00.000Z') }]);
+  const plan = planMerge([product('0036000291452', 'Atún', 2300, '2026-01-01T00:00:00.000Z')], parseBackup(file));
+  assert.equal(plan.add.length, 0);
+  assert.equal(plan.update.length, 1);
+});
+
+test('recibir productos: se aplica en la base de datos sin borrar nada', async () => {
+  const { planMerge } = await import('../src/services/product-merge.ts');
+  const { applyMerge, allProducts } = await import('../src/db/products.ts');
+  const db = openDb();
+  await migrate(db);
+  await replaceAllProducts(db, [
+    product('7501000000011', 'Leche', 2850, '2026-03-01T10:00:00.000Z'),
+    product('7501000000042', 'Solo aquí', 1000, '2026-03-01T10:00:00.000Z'),
+  ]);
+  const plan = planMerge(await allProducts(db), [
+    product('7501000000011', 'Leche deslactosada', 3100, '2026-03-02T10:00:00.000Z'),
+    product('7501000000059', 'Galletas', 1500, '2026-03-01T10:00:00.000Z'),
+  ]);
+  await applyMerge(db, plan);
+  assert.equal(await countProducts(db), 3);
+  assert.equal((await getProduct(db, '7501000000011'))?.priceCents, 3100);
+  assert.equal((await getProduct(db, '7501000000042'))?.name, 'Solo aquí');
+  // El nombre nuevo también se puede buscar.
+  assert.deepEqual((await searchProducts(db, 'deslactosada')).map((p) => p.code), ['7501000000011']);
+  // Volver a recibir el mismo archivo ya no cambia nada.
+  const again = planMerge(await allProducts(db), [product('7501000000011', 'Leche deslactosada', 3100, '2026-03-02T10:00:00.000Z')]);
+  assert.equal(again.add.length + again.update.length, 0);
+});
+
+test('un archivo abierto desde otra app lleva a "Recibir productos"', async () => {
+  const { routeForIncoming } = await import('../src/lib/incoming-file.ts');
+  const uri = 'content://com.whatsapp.provider.media/item/123';
+  assert.equal(routeForIncoming(uri), `/recibir?archivo=${encodeURIComponent(uri)}`);
+  assert.equal(routeForIncoming('file:///sdcard/Download/lista.json'), `/recibir?archivo=${encodeURIComponent('file:///sdcard/Download/lista.json')}`);
+  assert.equal(routeForIncoming('alpekashop://productos'), 'alpekashop://productos');
+  assert.equal(routeForIncoming('/ajustes'), '/ajustes');
+});

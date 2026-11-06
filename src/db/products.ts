@@ -109,6 +109,30 @@ export async function allProducts(db: SqlDb): Promise<Product[]> {
   return rows.map(toProduct);
 }
 
+/**
+ * Aplica productos recibidos de otro teléfono: agrega los nuevos y actualiza los que traen un cambio más reciente.
+ * Todo o nada: si una fila falla, no se aplica ninguna. Nunca borra productos.
+ */
+export async function applyMerge(
+  db: SqlDb,
+  plan: { add: readonly Product[]; update: readonly { after: Product }[] },
+): Promise<void> {
+  await db.withExclusiveTransactionAsync(async (txn) => {
+    for (const product of plan.add) {
+      await txn.runAsync(
+        `INSERT INTO products (code, name, name_search, price_cents, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
+        [product.code, product.name, toSearchText(product.name), product.priceCents, product.createdAt, product.updatedAt],
+      );
+    }
+    for (const { after } of plan.update) {
+      await txn.runAsync(
+        `UPDATE products SET name = ?, name_search = ?, price_cents = ?, updated_at = ? WHERE code = ?`,
+        [after.name, toSearchText(after.name), after.priceCents, after.updatedAt, after.code],
+      );
+    }
+  });
+}
+
 /** Reemplaza todo o no cambia nada: si una fila falla, la transacción se revierte. */
 export async function replaceAllProducts(db: SqlDb, products: Product[]): Promise<void> {
   await db.withExclusiveTransactionAsync(async (txn) => {
