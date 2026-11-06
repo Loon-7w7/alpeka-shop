@@ -1,4 +1,4 @@
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useState } from 'react';
 import { Alert, Platform, Switch, View } from 'react-native';
@@ -14,7 +14,7 @@ import { useUpdates } from '@/hooks/use-updates';
 import { shortDate } from '@/lib/dates';
 import { notify } from '@/lib/notify';
 import { BackupError } from '@/services/backup-format';
-import { exportBackup, lastSafetyCopy, pickBackup, restoreBackup, undoLastRestore } from '@/services/backup';
+import { exportBackup, lastSafetyCopy, pickBackup, restoreBackup, shareProducts, undoLastRestore } from '@/services/backup';
 import { checkForUpdate, currentVersion, downloadAndInstall, updatesSupported } from '@/services/updates';
 import { makeStyles, useColors, radius, space } from '@/theme';
 
@@ -87,7 +87,7 @@ export default function SettingsScreen() {
   const [count, setCount] = useState<number | null>(null);
   const [lastBackup, setLastBackup] = useState<string | null>(null);
   const [undoDate, setUndoDate] = useState<string | null>(null);
-  const [working, setWorking] = useState<'export' | 'restore' | 'undo' | null>(null);
+  const [working, setWorking] = useState<'share' | 'export' | 'restore' | 'undo' | null>(null);
   const [sound, setSound] = useState(true);
 
   /** Nunca lanza: si algo no se puede leer, se deja lo que ya se mostraba. */
@@ -124,6 +124,18 @@ export default function SettingsScreen() {
     } catch {
       setSound(!on);
       notify('No se pudo guardar el ajuste. Inténtalo otra vez.');
+    }
+  };
+
+  const onShare = async () => {
+    setWorking('share');
+    try {
+      await shareProducts(db);
+    } catch (error) {
+      Alert.alert('No se pudo compartir', errorText(error));
+    } finally {
+      setWorking(null);
+      load();
     }
   };
 
@@ -182,8 +194,8 @@ export default function SettingsScreen() {
   const onUndo = () => {
     if (!undoDate) return;
     Alert.alert(
-      '¿Deshacer la última recuperación?',
-      `La lista volverá a como estaba el ${shortDate(undoDate)}, antes de recuperar el respaldo.`,
+      '¿Deshacer el último cambio de la lista?',
+      `La lista volverá a como estaba el ${shortDate(undoDate)}, antes de recibir o recuperar productos.`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -244,6 +256,18 @@ export default function SettingsScreen() {
       </View>
 
       <View style={styles.section}>
+        <AppText variant="heading" accessibilityRole="header">Compartir con otro teléfono</AppText>
+        <View style={styles.card}>
+          <AppText variant="small">
+            Manda tu lista por WhatsApp, correo o Bluetooth. En el otro teléfono se agregan los productos nuevos y se actualizan los
+            precios más recientes; no se borra nada.
+          </AppText>
+          <Button label="Compartir productos" icon="share" loading={working === 'share'} disabled={!!working} onPress={onShare} />
+          <Button label="Recibir productos" variant="secondary" icon="download" disabled={!!working} onPress={() => router.push('/recibir')} />
+        </View>
+      </View>
+
+      <View style={styles.section}>
         <AppText variant="heading" accessibilityRole="header">Respaldo</AppText>
         <View style={styles.card}>
           <View style={styles.cardText}>
@@ -251,10 +275,10 @@ export default function SettingsScreen() {
             <AppText variant="strong">{lastBackup ? shortDate(lastBackup) : 'Todavía no hay ninguno'}</AppText>
             <AppText variant="small">Guarda el archivo en Drive, en tu correo o en otro teléfono para no perder tus precios.</AppText>
           </View>
-          <Button label="Guardar respaldo" icon="download" loading={working === 'export'} disabled={!!working} onPress={onExport} />
+          <Button label="Guardar respaldo" variant="secondary" icon="download" loading={working === 'export'} disabled={!!working} onPress={onExport} />
           <Button label="Recuperar un respaldo" variant="secondary" icon="upload" loading={working === 'restore'} disabled={!!working} onPress={onRestore} />
           {undoDate ? (
-            <Button label="Deshacer la última recuperación" variant="ghost" icon="refresh" loading={working === 'undo'} disabled={!!working} onPress={onUndo} />
+            <Button label="Deshacer el último cambio" variant="ghost" icon="refresh" loading={working === 'undo'} disabled={!!working} onPress={onUndo} />
           ) : null}
         </View>
       </View>

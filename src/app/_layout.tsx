@@ -74,6 +74,7 @@ function ThemedApp() {
           <Stack.Screen name="producto/formulario" options={{ title: 'Producto nuevo' }} />
           <Stack.Screen name="cuenta/escanear" options={{ headerShown: false }} />
           <Stack.Screen name="cuenta/buscar" options={{ title: 'Sumar producto' }} />
+          <Stack.Screen name="recibir" options={{ title: 'Recibir productos' }} />
         </Stack>
       </CartProvider>
     </ThemeProvider>

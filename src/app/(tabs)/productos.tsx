@@ -1,7 +1,7 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useEffect, useState } from 'react';
-import { FlatList, TextInput, View } from 'react-native';
+import { Alert, FlatList, TextInput, View } from 'react-native';
 
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
@@ -9,6 +9,8 @@ import { Icon } from '@/components/icon';
 import { ProductRow } from '@/components/product-row';
 import { countProducts, searchProducts, SEARCH_LIMIT, type Product } from '@/db/products';
 import { useLayout } from '@/hooks/use-layout';
+import { shareProducts } from '@/services/backup';
+import { BackupError } from '@/services/backup-format';
 import { makeStyles, useColors, radius, space } from '@/theme';
 
 const plural = (n: number) => (n === 1 ? '1 producto' : `${n.toLocaleString('es-MX')} productos`);
@@ -26,6 +28,7 @@ export default function ProductsScreen() {
   const [failed, setFailed] = useState(false);
   // Cambia cada vez que la pestaña vuelve a verse (o al tocar Reintentar) para recargar con la búsqueda actual.
   const [reloadKey, setReloadKey] = useState(0);
+  const [sharing, setSharing] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -56,6 +59,18 @@ export default function ProductsScreen() {
     };
   }, [db, query, reloadKey]);
 
+  // Abre el menú de compartir (WhatsApp, correo, Bluetooth…). El otro teléfono lo abre y combina la lista.
+  const share = async () => {
+    setSharing(true);
+    try {
+      await shareProducts(db);
+    } catch (error) {
+      Alert.alert('No se pudo compartir', error instanceof BackupError ? error.message : 'Algo salió mal. Inténtalo otra vez.');
+    } finally {
+      setSharing(false);
+    }
+  };
+
   const add = () => router.push({ pathname: '/producto/formulario', params: { nombre: query.trim() } });
   const renderItem = useCallback(({ item }: { item: Product }) => <ProductRow product={item} onOpen={openProduct} />, []);
 
@@ -70,7 +85,12 @@ export default function ProductsScreen() {
               <AppText variant="title" accessibilityRole="header">Productos</AppText>
               <AppText variant="muted">{plural(total)}</AppText>
             </View>
-            <Button label="Agregar" icon="plus" compact onPress={add} />
+            <View style={styles.titleActions}>
+              {total > 0 ? (
+                <Button label="Compartir" icon="share" variant="secondary" compact loading={sharing} disabled={sharing} onPress={share} />
+              ) : null}
+              <Button label="Agregar" icon="plus" compact onPress={add} />
+            </View>
           </View>
           <View style={styles.search}>
             <Icon name="search" color={colors.muted} />
@@ -139,6 +159,7 @@ const useStyles = makeStyles((colors) => ({
   headInner: { gap: space.md },
   titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.md, flexWrap: 'wrap' },
   titleText: { flexShrink: 1 },
+  titleActions: { flexDirection: 'row', gap: space.sm },
   search: {
     minHeight: 52,
     flexDirection: 'row',

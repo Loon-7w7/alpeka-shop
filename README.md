@@ -4,6 +4,16 @@ App para que el cajero de una tienda pequeña escanee un código de barras y vea
 
 Hecha con Expo SDK 58, React Native 0.88, Expo Router y SQLite.
 
+## Pasar productos a otro teléfono
+
+1. En el teléfono que tiene los productos: **Productos → Compartir** (o Ajustes → Compartir productos) y mándalo por WhatsApp, correo o Bluetooth.
+2. En el otro teléfono: toca el archivo y elige **Abrir con Alpeka Shop** (o Ajustes → Recibir productos → Elegir archivo).
+3. Revisa el resumen y toca **Agregar a mis productos**.
+
+El código de barras identifica cada producto. Los nuevos se agregan; si el mismo código ya existe con otro precio o nombre, gana el que se cambió más recientemente. No se borra nada, y **Ajustes → Deshacer el último cambio** regresa la lista a como estaba. La lógica está en `src/services/product-merge.ts`.
+
+"Recuperar un respaldo" es distinto: **reemplaza** toda la lista por la del archivo.
+
 ## Probar en desarrollo
 
 ```bash
