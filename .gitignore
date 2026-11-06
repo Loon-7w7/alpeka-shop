@@ -49,3 +49,7 @@ ios/
 # Archivos de cada versión
 *.apk
 version.json
+
+# Credenciales de firma descargadas con eas credentials (nunca subir)
+credentials.json
+credentials/
