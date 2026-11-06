@@ -8,7 +8,10 @@
     "scheme": "alpekashop",
     "userInterfaceStyle": "light",
     "backgroundColor": "#F4F7F5",
-    "assetBundlePatterns": ["assets/icons/*", "assets/images/alpaca.png"],
+    "assetBundlePatterns": [
+      "assets/icons/*",
+      "assets/images/alpaca.png"
+    ],
     "ios": {
       "bundleIdentifier": "com.alpeka.shop",
       "supportsTablet": true
@@ -63,13 +66,27 @@
           "android": {
             "enableMinifyInReleaseBuilds": true,
             "enableShrinkResourcesInReleaseBuilds": true,
-            "buildArchs": ["arm64-v8a", "armeabi-v7a"]
+            "buildArchs": [
+              "arm64-v8a",
+              "armeabi-v7a"
+            ]
           }
         }
       ]
     ],
     "experiments": {
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "52fe7462-9174-4e59-bb19-da06be59bfd0"
+      }
+    },
+    "owner": "alpeka"
   }
 }
