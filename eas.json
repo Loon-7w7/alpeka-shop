@@ -14,7 +14,7 @@
       "distribution": "internal",
       "android": { "buildType": "apk" },
       "env": {
-        "EXPO_PUBLIC_UPDATE_MANIFEST_URL": "https://github.com/TU_USUARIO/alpeka-shop/releases/latest/download/version.json"
+        "EXPO_PUBLIC_UPDATE_MANIFEST_URL": "https://github.com/Loon-7w7/alpeka-shop/releases/latest/download/version.json"
       }
     }
   }
