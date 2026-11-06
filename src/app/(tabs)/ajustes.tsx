@@ -1,7 +1,7 @@
 import { useFocusEffect } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useState } from 'react';
-import { Alert, Platform, View } from 'react-native';
+import { Alert, Platform, Switch, View } from 'react-native';
 
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
@@ -9,7 +9,7 @@ import { Icon } from '@/components/icon';
 import { Page } from '@/components/page';
 import { ThemePicker } from '@/components/theme-picker';
 import { countProducts } from '@/db/products';
-import { getSetting } from '@/db/settings';
+import { getSetting, scanSoundOn, setSetting } from '@/db/settings';
 import { useUpdates } from '@/hooks/use-updates';
 import { shortDate } from '@/lib/dates';
 import { notify } from '@/lib/notify';
@@ -88,13 +88,19 @@ export default function SettingsScreen() {
   const [lastBackup, setLastBackup] = useState<string | null>(null);
   const [undoDate, setUndoDate] = useState<string | null>(null);
   const [working, setWorking] = useState<'export' | 'restore' | 'undo' | null>(null);
+  const [sound, setSound] = useState(true);
 
   /** Nunca lanza: si algo no se puede leer, se deja lo que ya se mostraba. */
   const load = useCallback(async () => {
     try {
-      const [total, backup] = await Promise.all([countProducts(db), getSetting(db, 'last_backup_at')]);
+      const [total, backup, beep] = await Promise.all([
+        countProducts(db),
+        getSetting(db, 'last_backup_at'),
+        getSetting(db, 'scan_sound'),
+      ]);
       setCount(total);
       setLastBackup(backup);
+      setSound(scanSoundOn(beep));
     } catch {
       // La pantalla sigue funcionando; el número se actualiza al volver a entrar.
     }
@@ -110,6 +116,16 @@ export default function SettingsScreen() {
       load();
     }, [load]),
   );
+
+  const onSound = async (on: boolean) => {
+    setSound(on);
+    try {
+      await setSetting(db, 'scan_sound', on ? '1' : '0');
+    } catch {
+      setSound(!on);
+      notify('No se pudo guardar el ajuste. Inténtalo otra vez.');
+    }
+  };
 
   const onExport = async () => {
     setWorking('export');
@@ -210,6 +226,24 @@ export default function SettingsScreen() {
       </View>
 
       <View style={styles.section}>
+        <AppText variant="heading" accessibilityRole="header">Escáner</AppText>
+        <View style={[styles.card, styles.switchRow]}>
+          <View style={styles.switchText}>
+            <AppText variant="strong">Sonido al escanear</AppText>
+            <AppText variant="small">Suena un beep al leer un código. En modo silencio solo vibra.</AppText>
+          </View>
+          <Switch
+            accessibilityLabel="Sonido al escanear"
+            value={sound}
+            onValueChange={onSound}
+            trackColor={{ false: colors.border, true: colors.primary }}
+            thumbColor={sound ? colors.accent : colors.surface}
+            ios_backgroundColor={colors.border}
+          />
+        </View>
+      </View>
+
+      <View style={styles.section}>
         <AppText variant="heading" accessibilityRole="header">Respaldo</AppText>
         <View style={styles.card}>
           <View style={styles.cardText}>
@@ -245,4 +279,6 @@ const useStyles = makeStyles((colors) => ({
   section: { gap: space.sm + 2 },
   card: { gap: space.md, padding: space.lg, borderRadius: radius.lg, backgroundColor: colors.surface },
   cardText: { gap: 2 },
+  switchRow: { flexDirection: 'row', alignItems: 'center', gap: space.md },
+  switchText: { flex: 1, minWidth: 0, gap: 2 },
 }));

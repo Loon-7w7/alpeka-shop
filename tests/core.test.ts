@@ -8,7 +8,7 @@ import {
   countProducts, deleteProduct, DuplicateCodeError, findProduct, getProduct, InvalidProductError, MissingProductError,
   replaceAllProducts, saveProduct, searchProducts,
 } from '../src/db/products.ts';
-import { getSetting, setSetting } from '../src/db/settings.ts';
+import { getSetting, scanSoundOn, setSetting } from '../src/db/settings.ts';
 import type { SqlDb } from '../src/db/types.ts';
 import { barcodeCandidates, isValidBarcode, normalizeBarcode } from '../src/lib/barcode.ts';
 import { centsToInput, formatCents, parsePriceToCents } from '../src/lib/money.ts';
@@ -316,4 +316,15 @@ test('el tema guardado se valida antes de usarse', async () => {
   await setSetting(db, 'theme_mode', 'dark');
   assert.equal(await getSetting(db, 'theme_color'), 'verde');
   assert.equal(await getSetting(db, 'theme_mode'), 'dark');
+});
+
+test('el beep del escáner viene encendido y se puede apagar', async () => {
+  assert.equal(scanSoundOn(null), true);
+  assert.equal(scanSoundOn('1'), true);
+  assert.equal(scanSoundOn('0'), false);
+  const db = openDb();
+  await migrate(db);
+  assert.equal(scanSoundOn(await getSetting(db, 'scan_sound')), true);
+  await setSetting(db, 'scan_sound', '0');
+  assert.equal(scanSoundOn(await getSetting(db, 'scan_sound')), false);
 });

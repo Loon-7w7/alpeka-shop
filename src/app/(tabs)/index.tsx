@@ -11,6 +11,7 @@ import { ManualEntry } from '@/components/manual-entry';
 import { ScanFrame } from '@/components/scan-frame';
 import { findProduct } from '@/db/products';
 import { useLayout } from '@/hooks/use-layout';
+import { useScanBeep } from '@/hooks/use-scan-beep';
 import { useUpdates } from '@/hooks/use-updates';
 import { barcodeCandidates } from '@/lib/barcode';
 import { notify } from '@/lib/notify';
@@ -33,6 +34,7 @@ export default function ScanScreen() {
   const [cameraError, setCameraError] = useState(false);
   const [area, setArea] = useState({ width: 0, height: 0 });
   const updates = useUpdates();
+  const beep = useScanBeep();
 
   const busy = useRef(false);
   const lastScan = useRef({ code: '', at: 0 });
@@ -88,9 +90,10 @@ export default function ScanScreen() {
       busy.current = true;
       lastScan.current = { code, at: now };
       Vibration.vibrate(40);
+      beep();
       openCode(codes);
     },
-    [openCode],
+    [openCode, beep],
   );
 
   const submitManual = (code: string) => {

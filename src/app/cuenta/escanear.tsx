@@ -12,6 +12,7 @@ import { ScanFrame } from '@/components/scan-frame';
 import { findProduct } from '@/db/products';
 import { useCart } from '@/hooks/use-cart';
 import { useLayout } from '@/hooks/use-layout';
+import { useScanBeep } from '@/hooks/use-scan-beep';
 import { barcodeCandidates } from '@/lib/barcode';
 import { cartCount, cartTotal } from '@/lib/cart';
 import { formatCents } from '@/lib/money';
@@ -40,6 +41,7 @@ export default function CartScanScreen() {
   const [unknown, setUnknown] = useState<string | null>(null);
   const [last, setLast] = useState<Last>(null);
   const [area, setArea] = useState({ width: 0, height: 0 });
+  const beep = useScanBeep();
 
   const busy = useRef(false);
   const lastScan = useRef({ code: '', at: 0 });
@@ -98,9 +100,10 @@ export default function CartScanScreen() {
       busy.current = true;
       lastScan.current = { code, at: now };
       Vibration.vibrate(40);
+      beep();
       addCode(codes);
     },
-    [addCode],
+    [addCode, beep],
   );
 
   const closeUnknown = () => {

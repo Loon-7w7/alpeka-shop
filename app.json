@@ -10,6 +10,7 @@
     "backgroundColor": "#FDF5F8",
     "assetBundlePatterns": [
       "assets/icons/*",
+      "assets/sounds/*",
       "assets/images/alpaca.png"
     ],
     "ios": {
@@ -73,7 +74,16 @@
             ]
           }
         }
-      ]
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": false,
+          "recordAudioAndroid": false,
+          "enableBackgroundPlayback": false
+        }
+      ],
+      "expo-asset"
     ],
     "experiments": {
       "reactCompiler": true
