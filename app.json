@@ -1,0 +1,75 @@
+{
+  "expo": {
+    "name": "Alpeka Shop",
+    "slug": "alpeka-shop",
+    "version": "1.0.0",
+    "orientation": "default",
+    "icon": "./assets/images/icon.png",
+    "scheme": "alpekashop",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#F4F7F5",
+    "assetBundlePatterns": ["assets/icons/*", "assets/images/alpaca.png"],
+    "ios": {
+      "bundleIdentifier": "com.alpeka.shop",
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.alpeka.shop",
+      "adaptiveIcon": {
+        "backgroundColor": "#F59FBF",
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+      },
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.VIBRATE",
+        "android.permission.REQUEST_INSTALL_PACKAGES"
+      ],
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.SYSTEM_ALERT_WINDOW"
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-sqlite",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Alpeka Shop usa la cámara para leer códigos de barras.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false,
+          "barcodeScannerEnabled": true
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#F59FBF",
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 180
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "enableMinifyInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true,
+            "buildArchs": ["arm64-v8a", "armeabi-v7a"]
+          }
+        }
+      ]
+    ],
+    "experiments": {
+      "reactCompiler": true
+    }
+  }
+}
