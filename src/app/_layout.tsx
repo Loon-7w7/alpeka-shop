@@ -7,6 +7,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/app-text';
 import { migrate } from '@/db/migrations';
+import { CartProvider } from '@/hooks/use-cart';
 import { checkForUpdate } from '@/services/updates';
 import { colors, space } from '@/theme';
 
@@ -56,18 +57,22 @@ export default function RootLayout() {
         <SQLiteProvider databaseName="alpeka.db" onInit={migrate}>
           <Ready />
           <StatusBar style="dark" />
-          <Stack
-            screenOptions={{
-              headerShadowVisible: false,
-              headerStyle: { backgroundColor: colors.ground },
-              headerTintColor: colors.ink,
-              contentStyle: { backgroundColor: colors.ground },
-            }}>
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="bienvenida" options={{ headerShown: false }} />
-            <Stack.Screen name="producto/[codigo]" options={{ title: 'Producto' }} />
-            <Stack.Screen name="producto/formulario" options={{ title: 'Producto nuevo' }} />
-          </Stack>
+          <CartProvider>
+            <Stack
+              screenOptions={{
+                headerShadowVisible: false,
+                headerStyle: { backgroundColor: colors.ground },
+                headerTintColor: colors.ink,
+                contentStyle: { backgroundColor: colors.ground },
+              }}>
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="bienvenida" options={{ headerShown: false }} />
+              <Stack.Screen name="producto/[codigo]" options={{ title: 'Producto' }} />
+              <Stack.Screen name="producto/formulario" options={{ title: 'Producto nuevo' }} />
+              <Stack.Screen name="cuenta/escanear" options={{ headerShown: false }} />
+              <Stack.Screen name="cuenta/buscar" options={{ title: 'Sumar producto' }} />
+            </Stack>
+          </CartProvider>
         </SQLiteProvider>
       </DatabaseBoundary>
     </ThemeProvider>

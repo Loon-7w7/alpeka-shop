@@ -1,6 +1,7 @@
 import type { SqlDb } from './types.ts';
 
-export type SettingKey = 'welcome_seen' | 'last_backup_at';
+/** `cart`: la cuenta en curso del cajero (ver `lib/cart.ts`). No forma parte de los respaldos. */
+export type SettingKey = 'welcome_seen' | 'last_backup_at' | 'cart';
 
 export async function getSetting(db: SqlDb, key: SettingKey): Promise<string | null> {
   const row = await db.getFirstAsync<{ value: string }>('SELECT value FROM settings WHERE key = ?', [key]);

@@ -232,3 +232,54 @@ test('respaldo: códigos equivalentes, formato y fechas', () => {
   assert.equal(fixed?.createdAt, new Date(0).toISOString());
   assert.equal(fixed?.updatedAt, '2026-01-02T03:04:05.000Z');
 });
+
+test('la cuenta suma productos y junta el mismo código', async () => {
+  const { addItem, cartCount, cartTotal, setQty } = await import('../src/lib/cart.ts');
+  let cart = addItem([], { code: '7501000000001', name: 'Leche', priceCents: 2850 }, 'a');
+  cart = addItem(cart, { code: '7501000000001', name: 'Leche', priceCents: 2850 }, 'b');
+  cart = addItem(cart, { code: null, name: '', priceCents: 1000 }, 'c');
+  cart = addItem(cart, { code: null, name: 'Dulces', priceCents: 1000 }, 'd');
+  assert.equal(cart.length, 3);
+  assert.equal(cart[0].qty, 2);
+  assert.equal(cart[1].name, 'Precio suelto');
+  assert.equal(cartCount(cart), 4);
+  assert.equal(cartTotal(cart), 2850 * 2 + 1000 + 1000);
+  cart = setQty(cart, 'a', 0);
+  assert.equal(cart.length, 2);
+  assert.equal(setQty(cart, 'c', 5000)[0].qty, 999);
+  assert.equal(addItem(cart, { code: null, name: 'x', priceCents: 0 }), cart);
+});
+
+test('la cuenta separa el mismo código si cambió el precio', async () => {
+  const { addItem } = await import('../src/lib/cart.ts');
+  let cart = addItem([], { code: '7501000000001', name: 'Leche', priceCents: 2850 }, 'a');
+  cart = addItem(cart, { code: '7501000000001', name: 'Leche', priceCents: 3000 }, 'b');
+  assert.equal(cart.length, 2);
+});
+
+test('el cambio se calcula en centavos', async () => {
+  const { changeFor } = await import('../src/lib/cart.ts');
+  assert.equal(changeFor(8550, 10000), 1450);
+  assert.equal(changeFor(8550, 5000), -3550);
+});
+
+test('la cuenta guardada se recupera y descarta líneas dañadas', async () => {
+  const { addItem, parseCart, serializeCart } = await import('../src/lib/cart.ts');
+  const cart = addItem([], { code: '7501000000001', name: 'Leche', priceCents: 2850 }, 'a');
+  assert.deepEqual(parseCart(serializeCart(cart)), cart);
+  assert.deepEqual(parseCart(null), []);
+  assert.deepEqual(parseCart('no es json'), []);
+  const mixed = JSON.stringify({
+    v: 1,
+    items: [cart[0], { id: 'b', code: null, name: 'x', priceCents: -1, qty: 1 }, { id: 'a', code: null, name: 'dup', priceCents: 100, qty: 1 }],
+  });
+  assert.deepEqual(parseCart(mixed), cart);
+});
+
+test('la cuenta se guarda en settings sin tocar productos', async () => {
+  const db = openDb();
+  await migrate(db);
+  await setSetting(db, 'cart', '{"v":1,"items":[]}');
+  assert.equal(await getSetting(db, 'cart'), '{"v":1,"items":[]}');
+  assert.equal(await countProducts(db), 0);
+});

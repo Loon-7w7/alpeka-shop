@@ -32,6 +32,10 @@ export default function TabsLayout() {
         <NativeTabs.Trigger.Label>Escanear</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon src={ICONS.scan} renderingMode="template" />
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="cuenta">
+        <NativeTabs.Trigger.Label>Cuenta</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon src={ICONS.cart} renderingMode="template" />
+      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="productos">
         <NativeTabs.Trigger.Label>Productos</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon src={ICONS.list} renderingMode="template" />
