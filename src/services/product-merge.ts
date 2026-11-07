@@ -1,4 +1,6 @@
 import type { Product } from '../db/products.ts';
+import type { Promotion } from '../db/promotions.ts';
+import { sameRule } from '../lib/promo.ts';
 
 /** Un producto que ya existe y cambia con lo recibido. */
 export type MergeUpdate = { before: Product; after: Product };
@@ -12,6 +14,8 @@ export type MergePlan = {
   same: number;
   /** Mismo código, pero en este teléfono se cambió después: se conserva el de aquí. */
   keptNewer: number;
+  /** Promociones que se agregan o actualizan (mismas reglas: código de barras y gana lo más reciente). */
+  promotions: { add: Promotion[]; update: Promotion[] };
 };
 
 const time = (iso: string) => {
@@ -24,9 +28,13 @@ const time = (iso: string) => {
  * Nunca borra: lo que solo existe en este teléfono se queda igual.
  * Con el mismo código gana el cambio más reciente, para no regresar un precio viejo.
  */
-export function planMerge(current: readonly Product[], incoming: readonly Product[]): MergePlan {
+export function planMerge(
+  current: readonly Product[],
+  incoming: readonly Product[],
+  promos: { current: readonly Promotion[]; incoming: readonly Promotion[] } = { current: [], incoming: [] },
+): MergePlan {
   const byCode = new Map(current.map((product) => [product.code, product]));
-  const plan: MergePlan = { add: [], update: [], same: 0, keptNewer: 0 };
+  const plan: MergePlan = { add: [], update: [], same: 0, keptNewer: 0, promotions: { add: [], update: [] } };
   for (const product of incoming) {
     const existing = byCode.get(product.code);
     if (!existing) {
@@ -46,7 +54,24 @@ export function planMerge(current: readonly Product[], incoming: readonly Produc
       plan.keptNewer += 1;
     }
   }
+  // Solo promociones de productos que existirán aquí después de combinar.
+  const promoByCode = new Map(promos.current.map((promo) => [promo.code, promo]));
+  for (const promo of promos.incoming) {
+    if (!byCode.has(promo.code)) continue;
+    const existing = promoByCode.get(promo.code);
+    if (!existing) {
+      plan.promotions.add.push(promo);
+      promoByCode.set(promo.code, promo);
+    } else if (
+      !(sameRule(existing.rule, promo.rule) && existing.active === promo.active) &&
+      time(promo.updatedAt) > time(existing.updatedAt)
+    ) {
+      plan.promotions.update.push({ ...promo, createdAt: existing.createdAt });
+    }
+  }
   return plan;
 }
 
-export const mergeChanges = (plan: MergePlan) => plan.add.length + plan.update.length;
+export const promoChanges = (plan: MergePlan) => plan.promotions.add.length + plan.promotions.update.length;
+
+export const mergeChanges = (plan: MergePlan) => plan.add.length + plan.update.length + promoChanges(plan);

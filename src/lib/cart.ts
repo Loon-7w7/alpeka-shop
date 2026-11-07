@@ -1,4 +1,5 @@
 import { isValidCents } from './money.ts';
+import { parsePromoRule, priceLine, type PromoRule } from './promo.ts';
 
 /**
  * La cuenta del cajero: solo suma precios. No cambia productos ni inventario.
@@ -11,7 +12,11 @@ export type CartItem = {
   name: string;
   priceCents: number;
   qty: number;
+  /** Promoción del producto al momento de agregarlo. `null` si no tiene. */
+  promo: PromoRule | null;
 };
+
+export type NewCartItem = { code: string | null; name: string; priceCents: number; promo?: PromoRule | null };
 
 export type Cart = readonly CartItem[];
 
@@ -22,15 +27,21 @@ let counter = 0;
 const newId = () => `${Date.now().toString(36)}-${(counter++).toString(36)}`;
 
 /**
- * Agrega un producto. Si ya está en la cuenta con el mismo código y precio, sube la cantidad.
- * Los precios sueltos siempre van en su propia línea.
+ * Agrega un producto. Si ya está en la cuenta con el mismo código y precio, sube la cantidad
+ * y toma la promoción más reciente, para que todas las piezas cuenten juntas para la promo.
+ * Los precios sueltos siempre van en su propia línea y nunca llevan promoción.
  */
-export function addItem(cart: Cart, item: { code: string | null; name: string; priceCents: number }, id = newId()): Cart {
+export function addItem(cart: Cart, item: NewCartItem, id = newId()): Cart {
   if (!isValidCents(item.priceCents)) return cart;
+  const promo = item.code === null ? null : (item.promo ?? null);
   const index = item.code === null ? -1 : cart.findIndex((line) => line.code === item.code && line.priceCents === item.priceCents);
-  if (index >= 0) return setQty(cart, cart[index].id, cart[index].qty + 1);
+  if (index >= 0) {
+    const line = cart[index];
+    const qty = Math.min(line.qty + 1, QTY_MAX);
+    return cart.map((other) => (other.id === line.id ? { ...other, qty, promo } : other));
+  }
   const name = item.name.trim() || (item.code ?? LOOSE_NAME);
-  return [...cart, { id, code: item.code, name, priceCents: item.priceCents, qty: 1 }];
+  return [...cart, { id, code: item.code, name, priceCents: item.priceCents, qty: 1, promo }];
 }
 
 /** Cambia la cantidad de una línea. Con 0 o menos, la quita. */
@@ -45,8 +56,13 @@ export function removeItem(cart: Cart, id: string): Cart {
   return cart.filter((line) => line.id !== id);
 }
 
-export const lineTotal = (line: CartItem) => line.priceCents * line.qty;
+/** Precio de la línea con su promoción aplicada (ver `lib/promo.ts`). */
+export const linePricing = (line: CartItem) => priceLine(line.priceCents, line.qty, line.promo);
+export const lineTotal = (line: CartItem) => linePricing(line).totalCents;
+/** Lo que se cobra, ya con promociones. */
 export const cartTotal = (cart: Cart) => cart.reduce((sum, line) => sum + lineTotal(line), 0);
+/** Cuánto se ahorra el cliente por las promociones. */
+export const cartSavings = (cart: Cart) => cart.reduce((sum, line) => sum + linePricing(line).savingsCents, 0);
 export const cartCount = (cart: Cart) => cart.reduce((sum, line) => sum + line.qty, 0);
 
 /** Positivo: cambio que se devuelve. Negativo: lo que falta por pagar. */
@@ -76,12 +92,15 @@ export function parseCart(text: string | null): CartItem[] {
     if (typeof line.name !== 'string' || !isValidCents(line.priceCents)) continue;
     if (!Number.isInteger(line.qty) || (line.qty as number) < 1) continue;
     seen.add(line.id);
+    // Una cuenta guardada antes de las promociones no trae `promo`: se cobra a precio normal.
+    const promo = line.code === null ? null : parsePromoRule(line.promo);
     result.push({
       id: line.id,
       code: line.code,
       name: line.name,
       priceCents: line.priceCents,
       qty: Math.min(line.qty as number, QTY_MAX),
+      promo,
     });
   }
   return result;

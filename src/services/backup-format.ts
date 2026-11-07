@@ -1,26 +1,40 @@
 import { NAME_MAX, type Product } from '../db/products.ts';
+import type { Promotion } from '../db/promotions.ts';
 import { isValidBarcode, normalizeBarcode } from '../lib/barcode.ts';
 import { isValidCents } from '../lib/money.ts';
+import { parsePromoRule } from '../lib/promo.ts';
 
+/**
+ * Las promociones van en un campo opcional `promotions` sin subir el formato:
+ * así un teléfono con una versión anterior todavía puede recibir los productos (y solo ignora las promos).
+ */
 export const BACKUP_FORMAT = 1;
 
 export class BackupError extends Error {}
 
-export function createBackup(products: Product[], now = new Date().toISOString()): string {
-  return JSON.stringify({ app: 'alpeka-shop', format: BACKUP_FORMAT, exportedAt: now, products });
+export type BackupData = { products: Product[]; promotions: Promotion[] };
+
+export function createBackup(products: Product[], promotions: readonly Promotion[] = [], now = new Date().toISOString()): string {
+  return JSON.stringify({ app: 'alpeka-shop', format: BACKUP_FORMAT, exportedAt: now, products, promotions });
 }
 
 const validDate = (value: unknown): value is string => typeof value === 'string' && !Number.isNaN(Date.parse(value));
 
-/** Revisa el archivo completo antes de tocar los datos del teléfono. */
-export function parseBackup(text: string): Product[] {
+/** Solo los productos del archivo (ver `parseBackupData`). */
+export const parseBackup = (text: string): Product[] => parseBackupData(text).products;
+
+/**
+ * Revisa el archivo completo antes de tocar los datos del teléfono.
+ * Un producto inválido rechaza el archivo; una promoción inválida (o de un producto que no viene) solo se omite.
+ */
+export function parseBackupData(text: string): BackupData {
   let data: unknown;
   try {
     data = JSON.parse(text);
   } catch {
     throw new BackupError('El archivo está dañado o no es un respaldo de Alpeka Shop.');
   }
-  const backup = (data ?? {}) as { app?: unknown; format?: unknown; products?: unknown };
+  const backup = (data ?? {}) as { app?: unknown; format?: unknown; products?: unknown; promotions?: unknown };
   if (backup.app !== 'alpeka-shop' || !Array.isArray(backup.products)) {
     throw new BackupError('Este archivo no es un respaldo de Alpeka Shop.');
   }
@@ -32,7 +46,7 @@ export function parseBackup(text: string): Product[] {
   }
   const seen = new Set<string>();
   const fallback = new Date(0).toISOString();
-  return backup.products.map((item, index) => {
+  const products = backup.products.map((item, index): Product => {
     const p = (item ?? {}) as Partial<Product>;
     const row = index + 1;
     // Se normaliza igual que al escanear: "036000291452" y "0036000291452" son el mismo producto.
@@ -52,4 +66,21 @@ export function parseBackup(text: string): Product[] {
       updatedAt: validDate(p.updatedAt) ? p.updatedAt : fallback,
     };
   });
+  const promotions: Promotion[] = [];
+  const promoCodes = new Set<string>();
+  for (const item of Array.isArray(backup.promotions) ? backup.promotions : []) {
+    const raw = (item ?? {}) as Partial<Record<keyof Promotion, unknown>>;
+    const code = typeof raw.code === 'string' ? normalizeBarcode(raw.code) : '';
+    const rule = parsePromoRule(raw.rule);
+    if (!seen.has(code) || promoCodes.has(code) || !rule || typeof raw.active !== 'boolean') continue;
+    promoCodes.add(code);
+    promotions.push({
+      code,
+      rule,
+      active: raw.active,
+      createdAt: validDate(raw.createdAt) ? raw.createdAt : fallback,
+      updatedAt: validDate(raw.updatedAt) ? raw.updatedAt : fallback,
+    });
+  }
+  return { products, promotions };
 }

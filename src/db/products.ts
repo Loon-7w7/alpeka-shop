@@ -1,6 +1,7 @@
 import { isValidBarcode } from '../lib/barcode.ts';
 import { isValidCents } from '../lib/money.ts';
 import { escapeLike, toSearchText } from '../lib/text.ts';
+import { writePromotion, type Promotion } from './promotions.ts';
 import type { SqlDb } from './types.ts';
 
 export type Product = {
@@ -82,13 +83,23 @@ export async function saveProduct(
   if (input.code !== input.originalCode && (await getProduct(db, input.code))) throw new DuplicateCodeError();
   try {
     if (input.originalCode) {
-      const { changes } = await db.runAsync(
-        `UPDATE products SET code = ?, name = ?, name_search = ?, price_cents = ?, updated_at = ? WHERE code = ?`,
-        [input.code, name, toSearchText(name), input.priceCents, now, input.originalCode],
-      );
-      if (changes === 0) throw new MissingProductError();
+      const originalCode = input.originalCode;
+      await db.withExclusiveTransactionAsync(async (txn) => {
+        const { changes } = await txn.runAsync(
+          `UPDATE products SET code = ?, name = ?, name_search = ?, price_cents = ?, updated_at = ? WHERE code = ?`,
+          [input.code, name, toSearchText(name), input.priceCents, now, originalCode],
+        );
+        if (changes === 0) throw new MissingProductError();
+        // Si se corrigió el código, la promoción se va con el producto.
+        if (input.code !== originalCode) {
+          await txn.runAsync('DELETE FROM promotions WHERE code = ?', [input.code]);
+          await txn.runAsync('UPDATE promotions SET code = ? WHERE code = ?', [input.code, originalCode]);
+        }
+      });
       return;
     }
+    // Un producto nuevo nunca hereda una promoción vieja con el mismo código.
+    await db.runAsync('DELETE FROM promotions WHERE code = ?', [input.code]);
     await db.runAsync(
       `INSERT INTO products (code, name, name_search, price_cents, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
       [input.code, name, toSearchText(name), input.priceCents, now, now],
@@ -100,8 +111,12 @@ export async function saveProduct(
   }
 }
 
+/** Borra el producto y su promoción. */
 export async function deleteProduct(db: SqlDb, code: string): Promise<void> {
-  await db.runAsync('DELETE FROM products WHERE code = ?', [code]);
+  await db.withExclusiveTransactionAsync(async (txn) => {
+    await txn.runAsync('DELETE FROM products WHERE code = ?', [code]);
+    await txn.runAsync('DELETE FROM promotions WHERE code = ?', [code]);
+  });
 }
 
 export async function allProducts(db: SqlDb): Promise<Product[]> {
@@ -110,12 +125,16 @@ export async function allProducts(db: SqlDb): Promise<Product[]> {
 }
 
 /**
- * Aplica productos recibidos de otro teléfono: agrega los nuevos y actualiza los que traen un cambio más reciente.
- * Todo o nada: si una fila falla, no se aplica ninguna. Nunca borra productos.
+ * Aplica productos (y sus promociones) recibidos de otro teléfono: agrega los nuevos y actualiza los que traen
+ * un cambio más reciente. Todo o nada: si una fila falla, no se aplica ninguna. Nunca borra.
  */
 export async function applyMerge(
   db: SqlDb,
-  plan: { add: readonly Product[]; update: readonly { after: Product }[] },
+  plan: {
+    add: readonly Product[];
+    update: readonly { after: Product }[];
+    promotions?: { add: readonly Promotion[]; update: readonly Promotion[] };
+  },
 ): Promise<void> {
   await db.withExclusiveTransactionAsync(async (txn) => {
     for (const product of plan.add) {
@@ -130,18 +149,29 @@ export async function applyMerge(
         [after.name, toSearchText(after.name), after.priceCents, after.updatedAt, after.code],
       );
     }
+    for (const promo of [...(plan.promotions?.add ?? []), ...(plan.promotions?.update ?? [])]) {
+      await writePromotion(txn, promo);
+    }
   });
 }
 
-/** Reemplaza todo o no cambia nada: si una fila falla, la transacción se revierte. */
-export async function replaceAllProducts(db: SqlDb, products: Product[]): Promise<void> {
+/**
+ * Reemplaza productos y promociones, o no cambia nada: si una fila falla, la transacción se revierte.
+ * Las promociones de códigos que no vienen en `products` se descartan.
+ */
+export async function replaceAllProducts(db: SqlDb, products: Product[], promotions: readonly Promotion[] = []): Promise<void> {
   await db.withExclusiveTransactionAsync(async (txn) => {
     await txn.runAsync('DELETE FROM products', []);
+    await txn.runAsync('DELETE FROM promotions', []);
     for (const product of products) {
       await txn.runAsync(
         `INSERT INTO products (code, name, name_search, price_cents, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
         [product.code, product.name, toSearchText(product.name), product.priceCents, product.createdAt, product.updatedAt],
       );
+    }
+    const codes = new Set(products.map((product) => product.code));
+    for (const promo of promotions) {
+      if (codes.has(promo.code)) await writePromotion(txn, promo);
     }
   });
 }

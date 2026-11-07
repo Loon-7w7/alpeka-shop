@@ -9,7 +9,7 @@ import { Field } from '@/components/field';
 import { PriceEntry } from '@/components/price-entry';
 import { useCart } from '@/hooks/use-cart';
 import { useLayout } from '@/hooks/use-layout';
-import { cartCount, cartTotal, changeFor, LOOSE_NAME, type CartItem } from '@/lib/cart';
+import { cartCount, cartSavings, cartTotal, changeFor, LOOSE_NAME, type CartItem } from '@/lib/cart';
 import { centsToInput, formatCents, parsePriceToCents } from '@/lib/money';
 import { makeStyles, radius, space } from '@/theme';
 
@@ -25,6 +25,7 @@ export default function CartScreen() {
   const [paid, setPaid] = useState('');
 
   const total = cartTotal(items);
+  const savings = cartSavings(items);
   const count = cartCount(items);
   const paidCents = parsePriceToCents(paid);
   const change = paidCents === null ? null : changeFor(total, paidCents);
@@ -55,11 +56,17 @@ export default function CartScreen() {
             {items.length ? <Button label="Cuenta nueva" icon="trash" variant="secondary" compact onPress={confirmClear} /> : null}
           </View>
 
-          <View style={styles.totalCard} accessible accessibilityLabel={`Total ${formatCents(total)}`}>
+          <View
+            style={styles.totalCard}
+            accessible
+            accessibilityLabel={`Total ${formatCents(total)}${savings ? `, ahorro por promociones ${formatCents(savings)}` : ''}`}>
             <Text maxFontSizeMultiplier={1.3} style={styles.totalLabel}>Total</Text>
             <Text maxFontSizeMultiplier={1.3} adjustsFontSizeToFit numberOfLines={1} style={styles.totalValue}>
               {formatCents(total)}
             </Text>
+            {savings > 0 ? (
+              <Text maxFontSizeMultiplier={1.3} style={styles.changeLine}>Ahorro con promociones: {formatCents(savings)}</Text>
+            ) : null}
             {change !== null && total > 0 ? (
               <Text maxFontSizeMultiplier={1.3} style={styles.changeLine}>
                 {change >= 0 ? `Cambio: ${formatCents(change)}` : `Faltan: ${formatCents(-change)}`}
