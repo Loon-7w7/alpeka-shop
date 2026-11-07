@@ -41,6 +41,10 @@ export default function TabsLayout() {
         <NativeTabs.Trigger.Label>Productos</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon src={ICONS.list} renderingMode="template" />
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="promos">
+        <NativeTabs.Trigger.Label>Promos</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon src={ICONS.tag} renderingMode="template" />
+      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="ajustes">
         <NativeTabs.Trigger.Label>Ajustes</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon src={ICONS.settings} renderingMode="template" />

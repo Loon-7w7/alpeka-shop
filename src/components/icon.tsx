@@ -19,6 +19,7 @@ export const ICONS = {
   minus: require('../../assets/icons/minus.png'),
   trash: require('../../assets/icons/trash.png'),
   share: require('../../assets/icons/share.png'),
+  tag: require('../../assets/icons/tag.png'),
 } as const;
 
 export type IconName = keyof typeof ICONS;

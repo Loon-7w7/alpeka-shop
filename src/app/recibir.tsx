@@ -7,18 +7,17 @@ import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { Icon, type IconName } from '@/components/icon';
 import { Page } from '@/components/page';
-import type { Product } from '@/db/products';
 import { formatCents } from '@/lib/money';
-import { BackupError } from '@/services/backup-format';
+import { BackupError, type BackupData } from '@/services/backup-format';
 import { pickProductsFile, previewReceive, readOpenedFile, receiveProducts } from '@/services/backup';
-import { mergeChanges, type MergePlan } from '@/services/product-merge';
+import { mergeChanges, promoChanges, type MergePlan } from '@/services/product-merge';
 import { makeStyles, radius, space, useColors } from '@/theme';
 
 type State =
   | { kind: 'idle' }
   | { kind: 'loading' }
-  | { kind: 'preview'; products: Product[]; plan: MergePlan }
-  | { kind: 'saving'; products: Product[]; plan: MergePlan }
+  | { kind: 'preview'; data: BackupData; plan: MergePlan }
+  | { kind: 'saving'; data: BackupData; plan: MergePlan }
   | { kind: 'done'; plan: MergePlan }
   | { kind: 'error'; message: string };
 
@@ -46,10 +45,10 @@ export default function ReceiveScreen() {
     if (!uri) return;
     let current = true;
     readOpenedFile(uri)
-      .then(async (products) => ({ products, plan: await previewReceive(db, products) }))
+      .then(async (data) => ({ data, plan: await previewReceive(db, data) }))
       .then(
-        ({ products, plan }) => {
-          if (current) setState({ kind: 'preview', products, plan });
+        ({ data, plan }) => {
+          if (current) setState({ kind: 'preview', data, plan });
         },
         (error) => {
           if (current) setState({ kind: 'error', message: errorText(error) });
@@ -68,7 +67,7 @@ export default function ReceiveScreen() {
         setState({ kind: 'idle' });
         return;
       }
-      setState({ kind: 'preview', products: picked.products, plan: await previewReceive(db, picked.products) });
+      setState({ kind: 'preview', data: picked.data, plan: await previewReceive(db, picked.data) });
     } catch (error) {
       setState({ kind: 'error', message: errorText(error) });
     }
@@ -78,7 +77,7 @@ export default function ReceiveScreen() {
     if (state.kind !== 'preview') return;
     setState({ ...state, kind: 'saving' });
     try {
-      setState({ kind: 'done', plan: await receiveProducts(db, state.products) });
+      setState({ kind: 'done', plan: await receiveProducts(db, state.data) });
     } catch {
       // Es todo o nada: si falló, la lista quedó como estaba.
       setState({ kind: 'error', message: 'No se pudieron guardar los productos. Tu lista no cambió; inténtalo otra vez.' });
@@ -144,17 +143,19 @@ export default function ReceiveScreen() {
   }
 
   // preview / saving
-  const { plan, products } = state;
+  const { plan, data } = state;
+  const promos = promoChanges(plan);
   const saving = state.kind === 'saving';
   const changes = mergeChanges(plan);
   const unchanged = plan.same + plan.keptNewer;
   return (
     <Page top={false} bottom>
-      <Hero icon="download" title={`El archivo trae ${plural(products.length, 'producto', 'productos')}`} />
+      <Hero icon="download" title={`El archivo trae ${plural(data.products.length, 'producto', 'productos')}`} />
 
       <View style={styles.card}>
         <Stat value={plan.add.length} label={plan.add.length === 1 ? 'producto nuevo' : 'productos nuevos'} strong />
         <Stat value={plan.update.length} label={plan.update.length === 1 ? 'precio actualizado' : 'precios actualizados'} strong />
+        {promos ? <Stat value={promos} label={promos === 1 ? 'promoción nueva o actualizada' : 'promociones nuevas o actualizadas'} strong /> : null}
         <Stat value={unchanged} label="ya los tienes igual o más recientes" />
       </View>
 
@@ -201,7 +202,9 @@ function doneText(plan: MergePlan) {
   const parts: string[] = [];
   if (plan.add.length) parts.push(`se agregaron ${plural(plan.add.length, 'producto', 'productos')}`);
   if (plan.update.length) parts.push(`se actualizaron ${plural(plan.update.length, 'precio', 'precios')}`);
-  const text = parts.join(' y ');
+  const promos = promoChanges(plan);
+  if (promos) parts.push(`llegaron ${plural(promos, 'promoción', 'promociones')}`);
+  const text = parts.length > 1 ? `${parts.slice(0, -1).join(', ')} y ${parts[parts.length - 1]}` : parts.join('');
   return `${text.charAt(0).toUpperCase()}${text.slice(1)}.`;
 }
 

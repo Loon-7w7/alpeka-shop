@@ -10,12 +10,14 @@ import { Icon } from '@/components/icon';
 import { PriceEntry } from '@/components/price-entry';
 import { ScanFrame } from '@/components/scan-frame';
 import { findProduct } from '@/db/products';
+import { activePromoRule } from '@/db/promotions';
 import { useCart } from '@/hooks/use-cart';
 import { useLayout } from '@/hooks/use-layout';
 import { useScanBeep } from '@/hooks/use-scan-beep';
 import { barcodeCandidates } from '@/lib/barcode';
 import { cartCount, cartTotal } from '@/lib/cart';
 import { formatCents } from '@/lib/money';
+import { describePromo, type PromoRule } from '@/lib/promo';
 import { notify } from '@/lib/notify';
 import { makeStyles, useColors, radius, space, TOUCH_MIN } from '@/theme';
 
@@ -24,7 +26,7 @@ const SCANNER_SETTINGS = { barcodeTypes: BARCODE_TYPES };
 // Más corto que en Escanear: aquí es normal pasar dos veces el mismo producto para cobrar dos.
 const SAME_CODE_PAUSE_MS = 1500;
 
-type Last = { name: string; priceCents: number } | null;
+type Last = { name: string; priceCents: number; promo?: PromoRule | null } | null;
 
 /** Escaneo continuo: cada código leído se suma a la cuenta sin salir de la cámara. */
 export default function CartScanScreen() {
@@ -73,8 +75,10 @@ export default function CartScanScreen() {
       try {
         const product = await findProduct(db, codes);
         if (product) {
-          add({ code: product.code, name: product.name, priceCents: product.priceCents });
-          setLast({ name: product.name, priceCents: product.priceCents });
+          // Si la promoción no se puede leer, se cobra a precio normal en lugar de detener la venta.
+          const promo = await activePromoRule(db, product.code).catch(() => null);
+          add({ code: product.code, name: product.name, priceCents: product.priceCents, promo });
+          setLast({ name: product.name, priceCents: product.priceCents, promo });
           busy.current = false;
         } else {
           // Se queda en pausa hasta que el cajero escriba el precio o cancele.
@@ -174,7 +178,9 @@ export default function CartScanScreen() {
         <View style={styles.panel}>
           <View accessibilityLiveRegion="polite">
             <Text maxFontSizeMultiplier={1.3} numberOfLines={1} style={styles.lastText}>
-              {last ? `+ ${last.name}  ${formatCents(last.priceCents)}` : 'Pasa los productos uno por uno'}
+              {last
+                ? `+ ${last.name}  ${formatCents(last.priceCents)}${last.promo ? `  ·  ${describePromo(last.promo)}` : ''}`
+                : 'Pasa los productos uno por uno'}
             </Text>
           </View>
           <View style={styles.totalRow}>

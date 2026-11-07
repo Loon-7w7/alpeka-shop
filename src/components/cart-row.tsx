@@ -1,8 +1,9 @@
 import { memo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { lineTotal, QTY_MAX, type CartItem } from '@/lib/cart';
+import { linePricing, QTY_MAX, type CartItem } from '@/lib/cart';
 import { formatCents } from '@/lib/money';
+import { describePromo } from '@/lib/promo';
 import { makeStyles, useColors, radius, space, TOUCH_MIN } from '@/theme';
 import { AppText } from './app-text';
 import { Icon, type IconName } from './icon';
@@ -29,7 +30,9 @@ function Step({ icon, label, disabled, onPress }: { icon: IconName; label: strin
 export const CartRow = memo(function CartRow({ item, onQty }: Props) {
   const styles = useStyles();
   const unit = formatCents(item.priceCents);
-  const total = formatCents(lineTotal(item));
+  const pricing = linePricing(item);
+  const total = formatCents(pricing.totalCents);
+  const saved = pricing.savingsCents > 0;
   return (
     <View style={styles.row}>
       <View style={styles.text}>
@@ -38,9 +41,30 @@ export const CartRow = memo(function CartRow({ item, onQty }: Props) {
           {item.qty > 1 ? `${item.qty} × ${unit}` : unit}
           {item.code ? `  ·  ${item.code}` : ''}
         </AppText>
+        {item.promo ? (
+          <View style={styles.promoRow}>
+            <View style={styles.badge}>
+              <Text maxFontSizeMultiplier={1.3} style={styles.badgeText}>{describePromo(item.promo)}</Text>
+            </View>
+            {saved ? (
+              <Text maxFontSizeMultiplier={1.4} style={styles.saved}>Ahorras {formatCents(pricing.savingsCents)}</Text>
+            ) : null}
+          </View>
+        ) : null}
+        {pricing.hint ? <AppText variant="small" style={styles.hint}>{pricing.hint}</AppText> : null}
       </View>
       <View style={styles.side}>
-        <Text maxFontSizeMultiplier={1.4} style={styles.total}>{total}</Text>
+        {saved ? (
+          <Text
+            maxFontSizeMultiplier={1.4}
+            style={styles.regular}
+            accessibilityLabel={`Precio normal ${formatCents(pricing.regularCents)}`}>
+            {formatCents(pricing.regularCents)}
+          </Text>
+        ) : null}
+        <Text maxFontSizeMultiplier={1.4} style={styles.total} accessibilityLabel={saved ? `Con promoción ${total}` : undefined}>
+          {total}
+        </Text>
         <View style={styles.stepper}>
           <Step
             icon={item.qty > 1 ? 'minus' : 'trash'}
@@ -74,6 +98,12 @@ const useStyles = makeStyles((colors) => ({
   text: { flex: 1, minWidth: 0, gap: 2 },
   side: { alignItems: 'flex-end', gap: space.xs },
   total: { fontSize: 18, fontWeight: '800', color: colors.ink, fontVariant: ['tabular-nums'] },
+  regular: { fontSize: 14, color: colors.muted, textDecorationLine: 'line-through', fontVariant: ['tabular-nums'] },
+  promoRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: space.sm, marginTop: 2 },
+  badge: { borderRadius: 6, backgroundColor: colors.highlight, paddingHorizontal: space.sm, paddingVertical: 2 },
+  badgeText: { color: colors.onPrimary, fontSize: 13, fontWeight: '800' },
+  saved: { color: colors.accent, fontSize: 14, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  hint: { color: colors.accent, fontWeight: '600' },
   stepper: {
     flexDirection: 'row',
     alignItems: 'center',

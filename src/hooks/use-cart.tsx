@@ -2,13 +2,13 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { createContext, use, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import { getSetting, setSetting } from '@/db/settings';
-import { addItem, parseCart, removeItem, serializeCart, setQty, type Cart } from '@/lib/cart';
+import { addItem, parseCart, removeItem, serializeCart, setQty, type Cart, type NewCartItem } from '@/lib/cart';
 
 type CartContext = {
   items: Cart;
   /** `false` mientras se lee la cuenta guardada. */
   ready: boolean;
-  add: (item: { code: string | null; name: string; priceCents: number }) => void;
+  add: (item: NewCartItem) => void;
   setQty: (id: string, qty: number) => void;
   remove: (id: string) => void;
   clear: () => void;

@@ -14,6 +14,19 @@ El código de barras identifica cada producto. Los nuevos se agregan; si el mism
 
 "Recuperar un respaldo" es distinto: **reemplaza** toda la lista por la del archivo.
 
+## Promociones
+
+En la pestaña **Promos → Nueva** eliges un producto y el tipo de promoción (una por producto):
+
+- **Cantidad por precio**: "3 por $25". Las piezas que sobran se cobran a precio normal.
+- **Lleva y paga**: 2x1, 3x2…
+- **Descuento %**: se redondea al centavo más cercano.
+- **Precio de oferta**: un precio menor por pieza.
+
+Se aplican solas en la Cuenta al escanear o buscar el producto: cada línea muestra el precio normal tachado, el ahorro y avisos como "¡Lleva 1 más gratis!", y el total muestra el ahorro con promociones. Con el interruptor se apaga una promoción sin borrarla. Si el precio normal baja y la promoción deja de convenir, se cobra el precio normal.
+
+Las promociones viajan con **Compartir productos** y con los respaldos (campo opcional `promotions`; un teléfono con una versión anterior solo las ignora). Al recibir, gana la promoción cambiada más recientemente. El cálculo está en `src/lib/promo.ts`.
+
 ## Probar en desarrollo
 
 ```bash
@@ -79,5 +92,5 @@ El repositorio de los Releases debe ser público, porque la app descarga sin ini
 - `src/components`: piezas de interfaz.
 - `src/db`: SQLite, migraciones y consultas. Agrega los cambios de tablas al final de `migrations.ts` y nunca edites una migración publicada.
 - `src/services`: respaldos y actualizaciones.
-- `src/lib`: códigos de barras, dinero y versiones.
+- `src/lib`: códigos de barras, dinero, promociones y versiones.
 - `tests/web`: sustitutos que solo se usan en el navegador; no entran al APK.

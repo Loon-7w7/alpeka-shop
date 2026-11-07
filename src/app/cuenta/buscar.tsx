@@ -7,6 +7,7 @@ import { Button } from '@/components/button';
 import { Icon } from '@/components/icon';
 import { ProductRow } from '@/components/product-row';
 import { searchProducts, SEARCH_LIMIT, type Product } from '@/db/products';
+import { activePromoRule } from '@/db/promotions';
 import { useCart } from '@/hooks/use-cart';
 import { useLayout } from '@/hooks/use-layout';
 import { cartCount, cartTotal } from '@/lib/cart';
@@ -49,13 +50,15 @@ export default function CartSearchScreen() {
   }, [db, query, reloadKey]);
 
   const pick = useCallback(
-    (code: string) => {
+    async (code: string) => {
       const product = items?.find((item) => item.code === code);
       if (!product) return;
-      add({ code: product.code, name: product.name, priceCents: product.priceCents });
+      // Si la promoción no se puede leer, se cobra a precio normal en lugar de detener la venta.
+      const promo = await activePromoRule(db, product.code).catch(() => null);
+      add({ code: product.code, name: product.name, priceCents: product.priceCents, promo });
       notify(`Sumado: ${product.name}`);
     },
-    [items, add],
+    [db, items, add],
   );
 
   const renderItem = useCallback(({ item }: { item: Product }) => <ProductRow product={item} onOpen={pick} />, [pick]);
