@@ -287,6 +287,14 @@ export default function SettingsScreen() {
         <AppText variant="heading" accessibilityRole="header">Actualizaciones</AppText>
         <UpdatesCard />
       </View>
+
+      <View style={styles.section}>
+        <AppText variant="heading" accessibilityRole="header">Créditos</AppText>
+        <View style={[styles.card, styles.cardText]}>
+          <AppText variant="muted">Desarrollado por</AppText>
+          <AppText variant="strong">Producciones Alpeka/LonyArts</AppText>
+        </View>
+      </View>
     </Page>
   );
 }
