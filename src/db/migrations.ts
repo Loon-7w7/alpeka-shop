@@ -23,6 +23,16 @@ export const MIGRATIONS: readonly string[] = [
      created_at TEXT NOT NULL,
      updated_at TEXT NOT NULL
    ) WITHOUT ROWID;`,
+  // Notas de precio: productos sin código (verduras por kilo…). Solo se consultan; nunca entran a la cuenta.
+  // `key` es el nombre sin acentos ni mayúsculas, así "Tomate" de dos teléfonos es la misma nota.
+  `CREATE TABLE notes (
+     key         TEXT PRIMARY KEY NOT NULL,
+     name        TEXT NOT NULL,
+     price_cents INTEGER NOT NULL CHECK (price_cents > 0),
+     unit        TEXT NOT NULL,
+     created_at  TEXT NOT NULL,
+     updated_at  TEXT NOT NULL
+   ) WITHOUT ROWID;`,
 ];
 
 export async function migrate(db: SqlDb): Promise<void> {

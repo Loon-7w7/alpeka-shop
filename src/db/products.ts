@@ -1,6 +1,7 @@
 import { isValidBarcode } from '../lib/barcode.ts';
 import { isValidCents } from '../lib/money.ts';
 import { escapeLike, toSearchText } from '../lib/text.ts';
+import { writeNote, type PriceNote } from './notes.ts';
 import { writePromotion, type Promotion } from './promotions.ts';
 import type { SqlDb } from './types.ts';
 
@@ -134,6 +135,7 @@ export async function applyMerge(
     add: readonly Product[];
     update: readonly { after: Product }[];
     promotions?: { add: readonly Promotion[]; update: readonly Promotion[] };
+    notes?: { add: readonly PriceNote[]; update: readonly PriceNote[] };
   },
 ): Promise<void> {
   await db.withExclusiveTransactionAsync(async (txn) => {
@@ -152,14 +154,23 @@ export async function applyMerge(
     for (const promo of [...(plan.promotions?.add ?? []), ...(plan.promotions?.update ?? [])]) {
       await writePromotion(txn, promo);
     }
+    for (const note of [...(plan.notes?.add ?? []), ...(plan.notes?.update ?? [])]) {
+      await writeNote(txn, note);
+    }
   });
 }
 
 /**
  * Reemplaza productos y promociones, o no cambia nada: si una fila falla, la transacción se revierte.
  * Las promociones de códigos que no vienen en `products` se descartan.
+ * Las notas solo se reemplazan si se pasan (`null` = el archivo es de antes de las notas: se conservan las de aquí).
  */
-export async function replaceAllProducts(db: SqlDb, products: Product[], promotions: readonly Promotion[] = []): Promise<void> {
+export async function replaceAllProducts(
+  db: SqlDb,
+  products: Product[],
+  promotions: readonly Promotion[] = [],
+  notes: readonly PriceNote[] | null = null,
+): Promise<void> {
   await db.withExclusiveTransactionAsync(async (txn) => {
     await txn.runAsync('DELETE FROM products', []);
     await txn.runAsync('DELETE FROM promotions', []);
@@ -172,6 +183,10 @@ export async function replaceAllProducts(db: SqlDb, products: Product[], promoti
     const codes = new Set(products.map((product) => product.code));
     for (const promo of promotions) {
       if (codes.has(promo.code)) await writePromotion(txn, promo);
+    }
+    if (notes) {
+      await txn.runAsync('DELETE FROM notes', []);
+      for (const note of notes) await writeNote(txn, note);
     }
   });
 }

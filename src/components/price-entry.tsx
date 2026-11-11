@@ -1,12 +1,16 @@
 import { useState } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, View } from 'react-native';
 
+import { noteKey, type PriceNote } from '@/db/notes';
 import { useLayout } from '@/hooks/use-layout';
 import { parsePriceToCents } from '@/lib/money';
 import { makeStyles, space } from '@/theme';
 import { AppText } from './app-text';
 import { Button } from './button';
 import { Field } from './field';
+import { NoteRow } from './note-row';
+
+const NOTES_SHOWN = 8;
 
 type Props = {
   visible: boolean;
@@ -15,10 +19,12 @@ type Props = {
   subtitle?: string;
   onClose: () => void;
   onSubmit: (item: { name: string; priceCents: number }) => void;
+  /** Notas de precio (verduras por kilo…) para consultar mientras se cobra. Solo se muestran: no se suman. */
+  notes?: readonly PriceNote[];
 };
 
 /** Pide un precio para sumarlo a la cuenta. No guarda ningún producto. */
-export function PriceEntry({ visible, title, subtitle, onClose, onSubmit }: Props) {
+export function PriceEntry({ visible, title, subtitle, onClose, onSubmit, notes = [] }: Props) {
   const styles = useStyles();
   const [price, setPrice] = useState('');
   const [name, setName] = useState('');
@@ -30,6 +36,11 @@ export function PriceEntry({ visible, title, subtitle, onClose, onSubmit }: Prop
     setName('');
     setError(undefined);
   };
+
+  // Al escribir la descripción se filtran las notas, para encontrar rápido "tomate".
+  const term = noteKey(name);
+  const matching = term ? notes.filter((note) => noteKey(note.name).includes(term)) : notes;
+  const shown = matching.slice(0, NOTES_SHOWN);
 
   const close = () => {
     reset();
@@ -89,6 +100,24 @@ export function PriceEntry({ visible, title, subtitle, onClose, onSubmit }: Prop
             <AppText variant="small">Solo se suma a esta cuenta. No se guarda en tus productos.</AppText>
             <Button label="Sumar a la cuenta" icon="plus" onPress={submit} />
             <Button label="Cancelar" variant="ghost" onPress={close} />
+            {notes.length ? (
+              <View style={styles.notes}>
+                <AppText variant="strong" accessibilityRole="header">Notas de precio</AppText>
+                <AppText variant="small">Solo para consultar. Escribe arriba el total a cobrar.</AppText>
+                {shown.length ? (
+                  <View style={styles.noteList}>
+                    {shown.map((note) => (
+                      <NoteRow key={noteKey(note.name)} note={note} />
+                    ))}
+                  </View>
+                ) : (
+                  <AppText variant="muted">No hay notas con “{name.trim()}”.</AppText>
+                )}
+                {matching.length > shown.length ? (
+                  <AppText variant="small">Escribe en Descripción para ver las demás ({matching.length - shown.length} más).</AppText>
+                ) : null}
+              </View>
+            ) : null}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -107,4 +136,6 @@ const useStyles = makeStyles((colors) => ({
   },
   sheetContent: { paddingTop: space.xl, alignItems: 'center' },
   inner: { gap: space.md },
+  notes: { gap: space.sm, paddingTop: space.sm },
+  noteList: { borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: colors.border },
 }));

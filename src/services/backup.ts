@@ -2,6 +2,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import { Directory, File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 
+import { allNotes } from '../db/notes.ts';
 import { allProducts, applyMerge, replaceAllProducts } from '../db/products.ts';
 import { allPromotions } from '../db/promotions.ts';
 import { setSetting } from '../db/settings.ts';
@@ -35,7 +36,7 @@ async function saveSafetyCopy(db: SqlDb): Promise<void> {
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
   const safety = new File(folder, `${SAFETY_PREFIX}${stamp}.json`);
   safety.create({ overwrite: true });
-  await safety.write(createBackup(await allProducts(db), await allPromotions(db)));
+  await safety.write(createBackup(await allProducts(db), await allPromotions(db), await allNotes(db)));
 }
 
 function pruneSafetyCopies() {
@@ -49,10 +50,11 @@ function pruneSafetyCopies() {
 async function shareProductsFile(db: SqlDb, name: string, dialogTitle: string): Promise<void> {
   if (!(await Sharing.isAvailableAsync())) throw new BackupError('Este teléfono no permite compartir archivos.');
   const products = await allProducts(db);
-  if (products.length === 0) throw new BackupError('Todavía no hay productos para compartir.');
+  const notes = await allNotes(db);
+  if (products.length === 0 && notes.length === 0) throw new BackupError('Todavía no hay productos ni notas para compartir.');
   const file = new File(Paths.cache, `${name}-${localDate()}.json`);
   file.create({ overwrite: true });
-  await file.write(createBackup(products, await allPromotions(db)));
+  await file.write(createBackup(products, await allPromotions(db), notes));
   await Sharing.shareAsync(file.uri, { mimeType: 'application/json', dialogTitle, UTI: 'public.json' });
   await setSetting(db, 'last_backup_at', new Date().toISOString());
 }
@@ -68,7 +70,7 @@ async function readProductsFile(file: File, size?: number | null): Promise<{ tex
   if (size && size > MAX_BACKUP_BYTES) throw new BackupError('El archivo es demasiado grande para ser una lista de productos.');
   const text = await file.text();
   const data = parseBackupData(text);
-  if (data.products.length === 0) throw new BackupError('Este archivo no tiene productos. Tu lista no se cambió.');
+  if (data.products.length === 0 && !data.notes?.length) throw new BackupError('Este archivo no tiene productos. Tu lista no se cambió.');
   return { text, data };
 }
 
@@ -117,7 +119,12 @@ export async function readOpenedFile(uri: string): Promise<BackupData> {
 
 /** Calcula qué cambiaría sin tocar nada, para mostrar el resumen antes de confirmar. */
 export async function previewReceive(db: SqlDb, data: BackupData): Promise<MergePlan> {
-  return planMerge(await allProducts(db), data.products, { current: await allPromotions(db), incoming: data.promotions });
+  return planMerge(
+    await allProducts(db),
+    data.products,
+    { current: await allPromotions(db), incoming: data.promotions },
+    { current: await allNotes(db), incoming: data.notes ?? [] },
+  );
 }
 
 /**
@@ -136,9 +143,9 @@ export async function receiveProducts(db: SqlDb, data: BackupData): Promise<Merg
 
 /** Guarda una copia de lo actual (se conservan las últimas 5) y luego reemplaza la lista. */
 export async function restoreBackup(db: SqlDb, text: string): Promise<void> {
-  const { products, promotions } = parseBackupData(text);
+  const { products, promotions, notes } = parseBackupData(text);
   await saveSafetyCopy(db);
-  await replaceAllProducts(db, products, promotions);
+  await replaceAllProducts(db, products, promotions, notes);
   pruneSafetyCopies();
 }
 
@@ -155,7 +162,7 @@ export function lastSafetyCopy(): { file: File; date: string } | null {
 export async function undoLastRestore(db: SqlDb): Promise<void> {
   const last = lastSafetyCopy();
   if (!last) throw new BackupError('No hay un cambio que deshacer.');
-  const { products, promotions } = parseBackupData(await last.file.text());
-  await replaceAllProducts(db, products, promotions);
+  const { products, promotions, notes } = parseBackupData(await last.file.text());
+  await replaceAllProducts(db, products, promotions, notes);
   last.file.delete();
 }

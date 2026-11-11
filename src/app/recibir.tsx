@@ -10,7 +10,7 @@ import { Page } from '@/components/page';
 import { formatCents } from '@/lib/money';
 import { BackupError, type BackupData } from '@/services/backup-format';
 import { pickProductsFile, previewReceive, readOpenedFile, receiveProducts } from '@/services/backup';
-import { mergeChanges, promoChanges, type MergePlan } from '@/services/product-merge';
+import { mergeChanges, noteChanges, promoChanges, type MergePlan } from '@/services/product-merge';
 import { makeStyles, radius, space, useColors } from '@/theme';
 
 type State =
@@ -145,17 +145,26 @@ export default function ReceiveScreen() {
   // preview / saving
   const { plan, data } = state;
   const promos = promoChanges(plan);
+  const notes = noteChanges(plan);
   const saving = state.kind === 'saving';
   const changes = mergeChanges(plan);
   const unchanged = plan.same + plan.keptNewer;
   return (
     <Page top={false} bottom>
-      <Hero icon="download" title={`El archivo trae ${plural(data.products.length, 'producto', 'productos')}`} />
+      <Hero
+        icon="download"
+        title={
+          data.products.length || !data.notes?.length
+            ? `El archivo trae ${plural(data.products.length, 'producto', 'productos')}`
+            : `El archivo trae ${plural(data.notes.length, 'nota de precio', 'notas de precio')}`
+        }
+      />
 
       <View style={styles.card}>
         <Stat value={plan.add.length} label={plan.add.length === 1 ? 'producto nuevo' : 'productos nuevos'} strong />
         <Stat value={plan.update.length} label={plan.update.length === 1 ? 'precio actualizado' : 'precios actualizados'} strong />
         {promos ? <Stat value={promos} label={promos === 1 ? 'promoción nueva o actualizada' : 'promociones nuevas o actualizadas'} strong /> : null}
+        {notes ? <Stat value={notes} label={notes === 1 ? 'nota de precio nueva o actualizada' : 'notas de precio nuevas o actualizadas'} strong /> : null}
         <Stat value={unchanged} label="ya los tienes igual o más recientes" />
       </View>
 
@@ -204,6 +213,8 @@ function doneText(plan: MergePlan) {
   if (plan.update.length) parts.push(`se actualizaron ${plural(plan.update.length, 'precio', 'precios')}`);
   const promos = promoChanges(plan);
   if (promos) parts.push(`llegaron ${plural(promos, 'promoción', 'promociones')}`);
+  const notes = noteChanges(plan);
+  if (notes) parts.push(`llegaron ${plural(notes, 'nota de precio', 'notas de precio')}`);
   const text = parts.length > 1 ? `${parts.slice(0, -1).join(', ')} y ${parts[parts.length - 1]}` : parts.join('');
   return `${text.charAt(0).toUpperCase()}${text.slice(1)}.`;
 }

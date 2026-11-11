@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useState } from 'react';
 import { Alert, FlatList, Text, View } from 'react-native';
 
@@ -7,6 +8,7 @@ import { Button } from '@/components/button';
 import { CartRow } from '@/components/cart-row';
 import { Field } from '@/components/field';
 import { PriceEntry } from '@/components/price-entry';
+import { allNotes, type PriceNote } from '@/db/notes';
 import { useCart } from '@/hooks/use-cart';
 import { useLayout } from '@/hooks/use-layout';
 import { cartCount, cartSavings, cartTotal, changeFor, LOOSE_NAME, type CartItem } from '@/lib/cart';
@@ -21,7 +23,9 @@ export default function CartScreen() {
   const styles = useStyles();
   const { items, ready, add, setQty, clear } = useCart();
   const { insets, gutter, contentWidth } = useLayout();
+  const db = useSQLiteContext();
   const [looseOpen, setLooseOpen] = useState(false);
+  const [notes, setNotes] = useState<PriceNote[]>([]);
   const [paid, setPaid] = useState('');
 
   const total = cartTotal(items);
@@ -32,6 +36,12 @@ export default function CartScreen() {
 
   // Al vaciar la cuenta también se olvida con cuánto pagó el cliente anterior.
   if (items.length === 0 && paid !== '') setPaid('');
+
+  // Las notas se leen al abrir "Precio suelto" para mostrar los precios más recientes. Si fallan, se abre sin ellas.
+  const openLoose = () => {
+    setLooseOpen(true);
+    allNotes(db).then(setNotes, () => setNotes([]));
+  };
 
   const confirmClear = () => {
     Alert.alert('¿Empezar una cuenta nueva?', 'Se quitarán todos los artículos de esta cuenta. Tus productos no cambian.', [
@@ -81,7 +91,7 @@ export default function CartScreen() {
                 <Button label="Buscar" icon="search" variant="secondary" onPress={() => router.push('/cuenta/buscar')} />
               </View>
               <View style={styles.action}>
-                <Button label="Precio suelto" icon="plus" variant="secondary" onPress={() => setLooseOpen(true)} />
+                <Button label="Precio suelto" icon="plus" variant="secondary" onPress={openLoose} />
               </View>
             </View>
           </View>
@@ -150,6 +160,7 @@ export default function CartScreen() {
         visible={looseOpen}
         title={LOOSE_NAME}
         subtitle="Para algo sin código o que no está registrado."
+        notes={notes}
         onClose={() => setLooseOpen(false)}
         onSubmit={({ name, priceCents }) => {
           setLooseOpen(false);

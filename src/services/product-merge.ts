@@ -1,3 +1,4 @@
+import { noteKey, type PriceNote } from '../db/notes.ts';
 import type { Product } from '../db/products.ts';
 import type { Promotion } from '../db/promotions.ts';
 import { sameRule } from '../lib/promo.ts';
@@ -16,6 +17,8 @@ export type MergePlan = {
   keptNewer: number;
   /** Promociones que se agregan o actualizan (mismas reglas: código de barras y gana lo más reciente). */
   promotions: { add: Promotion[]; update: Promotion[] };
+  /** Notas de precio que se agregan o actualizan (mismo nombre = misma nota; gana lo más reciente). */
+  notes: { add: PriceNote[]; update: PriceNote[] };
 };
 
 const time = (iso: string) => {
@@ -32,9 +35,12 @@ export function planMerge(
   current: readonly Product[],
   incoming: readonly Product[],
   promos: { current: readonly Promotion[]; incoming: readonly Promotion[] } = { current: [], incoming: [] },
+  notes: { current: readonly PriceNote[]; incoming: readonly PriceNote[] } = { current: [], incoming: [] },
 ): MergePlan {
   const byCode = new Map(current.map((product) => [product.code, product]));
-  const plan: MergePlan = { add: [], update: [], same: 0, keptNewer: 0, promotions: { add: [], update: [] } };
+  const plan: MergePlan = {
+    add: [], update: [], same: 0, keptNewer: 0, promotions: { add: [], update: [] }, notes: { add: [], update: [] },
+  };
   for (const product of incoming) {
     const existing = byCode.get(product.code);
     if (!existing) {
@@ -69,9 +75,25 @@ export function planMerge(
       plan.promotions.update.push({ ...promo, createdAt: existing.createdAt });
     }
   }
+  const noteByKey = new Map(notes.current.map((note) => [noteKey(note.name), note]));
+  for (const note of notes.incoming) {
+    const key = noteKey(note.name);
+    const existing = noteByKey.get(key);
+    if (!existing) {
+      plan.notes.add.push(note);
+      noteByKey.set(key, note);
+    } else if (
+      !(existing.name === note.name && existing.priceCents === note.priceCents && existing.unit === note.unit) &&
+      time(note.updatedAt) > time(existing.updatedAt)
+    ) {
+      plan.notes.update.push({ ...note, createdAt: existing.createdAt });
+    }
+  }
   return plan;
 }
 
 export const promoChanges = (plan: MergePlan) => plan.promotions.add.length + plan.promotions.update.length;
 
-export const mergeChanges = (plan: MergePlan) => plan.add.length + plan.update.length + promoChanges(plan);
+export const noteChanges = (plan: MergePlan) => plan.notes.add.length + plan.notes.update.length;
+
+export const mergeChanges = (plan: MergePlan) => plan.add.length + plan.update.length + promoChanges(plan) + noteChanges(plan);
